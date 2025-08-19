@@ -1,17 +1,38 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useEffect } from 'react'
 import { BRAND_NAME } from '@/lib/constants'
+import { smoothScrollTo } from '@/lib/utils'
 // import { FaFacebook, FaYoutube, FaInstagram, FaLinkedin } from 'react-icons/fa'
 
 export default function Footer() {
+    const pathname = usePathname()
 
     const navigationLinks = [
-        { name: 'Home', href: '/' },
-        { name: 'About', href: '/about' },
-        { name: 'Services', href: '/services' },
-        { name: 'Reservation', href: '/reservation' }
+        { name: 'Benefits', href: '#benefits' },
+        { name: 'Pricing', href: '#pricing' },
+        { name: 'FAQ\'s', href: '#faq' },
+        { name: 'Contact', href: '#contact' }
     ]
+
+    useEffect(() => {
+        if (pathname === '/' && window.location.hash) {
+            const elementId = window.location.hash.substring(1)
+            setTimeout(() => {
+                smoothScrollTo(elementId)
+            }, 100)
+        }
+    }, [pathname])
+
+    const handleLinkClick = (e: React.MouseEvent, href: string) => {
+        if (pathname === '/') {
+            e.preventDefault()
+            const elementId = href.substring(1) // Remove the '#'
+            smoothScrollTo(elementId)
+        }
+    }
 
     // const socialLinks = [
     //     { icon: FaFacebook, href: '#', label: 'Facebook' },
@@ -42,8 +63,8 @@ export default function Footer() {
                             </div>
                             
                             {/* Description */}
-                            <p className="text-[#282828] text-base leading-relaxed max-w-md">
-                                Experience the finest Turkish cuisine in Doha, from our famous home-baked bread to our enticing traditional dishes to our legendary Uzman Restaurants specialities.
+                            <p className="text-[#282828] text-base leading-relaxed max-w-[380px]">
+                            Custom AI videos for agents & loan officers—just fill one form, hit submit, and we handle the rest.
                             </p>
                             
                             {/* Social Media */}
@@ -65,27 +86,15 @@ export default function Footer() {
                         
                         {/* Right Section - Navigation Links */}
                         <div className="lg:justify-self-end">
-                            <h3 className="text-[#282828] font-semibold text-[26px] mb-6">Links</h3>
-                            <div className="grid grid-cols-2 gap-24">
+                            <h3 className="text-[#282828] font-semibold text-[26px] mb-5 mt-8">Links</h3>
+                            <div className="grid grid-cols-1 gap-24">
                                 {/* Column 1 */}
-                                <div className="space-y-3">
+                                <div className="space-y-3 flex gap-6 flex-wrap">
                                     {navigationLinks.map((link, index) => (
                                         <Link
                                             key={index}
-                                            href={link.href}
-                                            className="block text-[#282828] text-[16px] hover:text-[#5046E5] transition-all duration-200"
-                                        >
-                                            {link.name}
-                                        </Link>
-                                    ))}
-                                </div>
-                                
-                                {/* Column 2 */}
-                                <div className="space-y-3">
-                                    {navigationLinks.map((link, index) => (
-                                        <Link
-                                            key={`duplicate-${index}`}
-                                            href={link.href}
+                                            href={pathname === '/' ? link.href : `/${link.href}`}
+                                            onClick={(e) => handleLinkClick(e, link.href)}
                                             className="block text-[#282828] text-[16px] hover:text-[#5046E5] transition-all duration-200"
                                         >
                                             {link.name}

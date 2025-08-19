@@ -20,7 +20,7 @@ export default function CreateVideoPage() {
         {/* Page Header */}
         <div className="text-center mb-8">
           <h1 className="text-[37px] md:text-4xl leading-[40px] lg:text-[42px] font-semibold text-[#171717] mb-4">
-            Create the video effortlessly
+          Create Videos Effortlessly
           </h1>
           <p className="text-lg md:text-[20px] text-[#5F5F5F] max-w-3xl mx-auto leading-[24px]">
             Custom AI videos for agents & loan officers—just fill one form, <br /> hit submit, and we handle the rest. (Once onboarded)
