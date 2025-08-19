@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ChevronDown, Check, AlertCircle } from 'lucide-react'
 import CreateVideoModal from './create-video-modal'
+import { sanitizeInput, RateLimiter, CSRFProtection } from '@/lib/utils'
 
 // Zod validation schema
 const createVideoSchema = z.object({
@@ -92,6 +93,16 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [formDataForModal, setFormDataForModal] = useState<CreateVideoFormData | null>(null)
 
+  // Security features
+  const rateLimiter = useRef(new RateLimiter(3, 60000)) // 3 video requests per minute
+  const [csrfToken, setCsrfToken] = useState<string>('')
+  
+  useEffect(() => {
+    // Generate CSRF token when component mounts
+    const token = CSRFProtection.generateToken()
+    setCsrfToken(token)
+  }, [])
+
   const {
     register,
     handleSubmit,
@@ -106,11 +117,46 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
   })
 
   const onSubmit = async (data: CreateVideoFormData) => {
+    // Rate limiting check
+    const clientId = `video_${data.email || 'anonymous'}`
+    if (rateLimiter.current.isRateLimited(clientId)) {
+      const remaining = rateLimiter.current.getRemainingAttempts(clientId)
+      alert(`Rate limit exceeded. Please wait before creating another video. ${remaining} attempts remaining.`)
+      return
+    }
+
+    // CSRF token validation
+    if (!CSRFProtection.validateToken(csrfToken)) {
+      alert('Security token invalid. Please refresh and try again.')
+      return
+    }
+
     setIsSubmitting(true)
     try {
+      // Sanitize all input data before processing
+      const sanitizedData: CreateVideoFormData = {
+        ...data,
+        name: sanitizeInput(data.name, 'name'),
+        companyName: sanitizeInput(data.companyName, 'text'),
+        license: sanitizeInput(data.license, 'text'),
+        tailoredFit: sanitizeInput(data.tailoredFit, 'text'),
+        socialHandles: sanitizeInput(data.socialHandles, 'text'),
+        videoTopic: sanitizeInput(data.videoTopic, 'text'),
+        topicKeyPoints: sanitizeInput(data.topicKeyPoints, 'text'),
+        zipCode: sanitizeInput(data.zipCode, 'text'),
+        zipCodeKeyPoints: sanitizeInput(data.zipCodeKeyPoints, 'text'),
+        city: sanitizeInput(data.city, 'name'),
+        preferredTone: sanitizeInput(data.preferredTone, 'text'),
+        callToAction: sanitizeInput(data.callToAction, 'text'),
+        email: sanitizeInput(data.email, 'email'),
+        prompt: data.prompt,
+        avatar: data.avatar,
+        position: data.position
+      }
+
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000))
-      console.log('Form data:', data)
+      console.log('Sanitized form data:', sanitizedData)
       
       // Store form data and open modal
       setFormDataForModal(data)
@@ -258,6 +304,9 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-7">
+        {/* CSRF Token (hidden) */}
+        <input type="hidden" name="csrf_token" value={csrfToken} />
+        
         {/* Row 1 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>

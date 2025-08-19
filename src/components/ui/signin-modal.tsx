@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react'
+import { sanitizeInput, RateLimiter, CSRFProtection } from '@/lib/utils'
 
 interface SigninModalProps {
   isOpen: boolean
@@ -41,8 +42,9 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
-  const [submissionCount, setSubmissionCount] = useState(0)
-  const [lastSubmissionTime, setLastSubmissionTime] = useState(0)
+  // Legacy submission tracking (now using RateLimiter class)
+  // const [submissionCount, setSubmissionCount] = useState(0)
+  // const [lastSubmissionTime, setLastSubmissionTime] = useState(0)
   
   // State to store registered users (this would come from your signup modal or API)
   const [registeredUsers] = useState<UserData[]>([])
@@ -51,27 +53,39 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
   const [showToast, setShowToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
+
+  // Enhanced security features
+  const rateLimiter = useRef(new RateLimiter(5, 60000)) // 5 attempts per minute
+  const [csrfToken, setCsrfToken] = useState<string>('')
+  
+  useEffect(() => {
+    if (isOpen) {
+      // Generate CSRF token when modal opens
+      const token = CSRFProtection.generateToken()
+      setCsrfToken(token)
+    }
+  }, [isOpen])
   
   // Refs for focus management
   const modalRef = useRef<HTMLDivElement>(null)
   const firstInputRef = useRef<HTMLInputElement>(null)
   const errorAnnouncementRef = useRef<HTMLDivElement>(null)
 
-  // Rate limiting check
-  const checkRateLimit = (): boolean => {
-    const now = Date.now()
-    const timeSinceLastSubmission = now - lastSubmissionTime
+  // Legacy rate limiting check (now using RateLimiter class)
+  // const checkRateLimit = (): boolean => {
+  //   const now = Date.now()
+  //   const timeSinceLastSubmission = now - lastSubmissionTime
     
-    if (timeSinceLastSubmission < 2000) { // 2 seconds cooldown
-      return false
-    }
+  //   if (timeSinceLastSubmission < 2000) { // 2 seconds cooldown
+  //     return false
+  //   }
     
-    if (submissionCount >= 5 && timeSinceLastSubmission < 60000) { // 5 attempts per minute
-      return false
-    }
+  //   if (submissionCount >= 5 && timeSinceLastSubmission < 60000) { // 5 attempts per minute
+  //     return false
+  //   }
     
-    return true
-  }
+  //   return true
+  // }
 
   // Show toast function
   const showToastMessage = (message: string, type: 'success' | 'error' = 'success') => {
@@ -86,9 +100,14 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
   }
 
   const handleInputChange = (field: keyof FormData, value: string) => {
+    // Enhanced input sanitization
+    const sanitizedValue = field === 'email' 
+      ? sanitizeInput(value, 'email')
+      : sanitizeInput(value, 'text')
+      
     setFormData(prev => ({
       ...prev,
-      [field]: value.trim()
+      [field]: sanitizedValue
     }))
     
     // Clear error when user starts typing
@@ -146,13 +165,21 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
   }
 
   const handleSignin = async () => {
-    // Rate limiting check
-    if (!checkRateLimit()) {
-      const errorMessage = submissionCount >= 5 
-        ? 'Too many attempts. Please wait 1 minute before trying again.'
-        : 'Please wait 2 seconds between submissions.'
+    // Enhanced rate limiting check using RateLimiter class
+    const clientId = `signin_${formData.email || 'anonymous'}`
+    if (rateLimiter.current.isRateLimited(clientId)) {
+      const remaining = rateLimiter.current.getRemainingAttempts(clientId)
+      const errorMessage = remaining === 0 
+        ? 'Too many signin attempts. Please wait 1 minute before trying again.'
+        : `Please wait before trying again. ${remaining} attempts remaining.`
       
       showToastMessage(errorMessage, 'error')
+      return
+    }
+
+    // CSRF token validation
+    if (!CSRFProtection.validateToken(csrfToken)) {
+      showToastMessage('Security token invalid. Please refresh and try again.', 'error')
       return
     }
 
@@ -166,8 +193,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
     }
 
     setIsSubmitting(true)
-    setSubmissionCount(prev => prev + 1)
-    setLastSubmissionTime(Date.now())
+    // Legacy submission tracking removed - now using RateLimiter class
 
     try {
       // Simulate API delay
@@ -221,6 +247,21 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
     showToastMessage('Password reset feature coming soon!', 'error')
   }
 
+  const handleClose = useCallback(() => {
+    setFormData({
+      email: '',
+      password: ''
+    })
+    setErrors({
+      email: '',
+      password: ''
+    })
+    setShowSuccess(false)
+    setIsSubmitting(false)
+    setRememberMe(false)
+    onClose()
+  }, [onClose])
+
   // Focus management and accessibility
   useEffect(() => {
     if (isOpen) {
@@ -259,7 +300,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
       document.addEventListener('keydown', handleKeyDown)
       return () => document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isOpen])
+  }, [isOpen, handleClose])
 
   // Load saved email on mount
   useEffect(() => {
@@ -268,22 +309,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
       setFormData(prev => ({ ...prev, email: savedEmail }))
       setRememberMe(true)
     }
-  }, [])
-
-  const handleClose = () => {
-    setFormData({
-      email: '',
-      password: ''
-    })
-    setErrors({
-      email: '',
-      password: ''
-    })
-    setShowSuccess(false)
-    setIsSubmitting(false)
-    setRememberMe(false)
-    onClose()
-  }
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -369,6 +395,9 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
             )}
 
             <form onSubmit={(e) => { e.preventDefault(); handleSignin(); }}>
+              {/* CSRF Token (hidden) */}
+              <input type="hidden" name="csrf_token" value={csrfToken} />
+              
               {/* Form Fields */}
               <div className="space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Email */}
