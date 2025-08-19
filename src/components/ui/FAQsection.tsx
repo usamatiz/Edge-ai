@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, Info, Heart, Users, MessageCircle, Calendar, Minus, CreditCard, Shield, Settings, HelpCircle, FileText, Zap, Lock, Clock } from 'lucide-react';
+import { ChevronDown, Info, Heart, Users, MessageCircle, Calendar, Minus, CreditCard, Shield, Settings, HelpCircle, Zap, Lock, Clock } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 
 interface FAQItem {
@@ -239,9 +239,9 @@ const FAQSection = () => {
                       style={{ color: '#4A3AFF' }}
                       aria-hidden="true"
                     />
-                                      ) : (
+                  ) : (
                       <ChevronDown
-                        className="w-5 h-5 sm:w-6 sm:h-6 lg:w-[28px] lg:h-[28px] transition-all duration-300"
+                        className="w-5 h-5 sm:w-6 hidden sm:h-6 lg:w-[28px] lg:h-[28px] transition-all duration-300"
                         style={{ color: '#A0A3BD' }}
                         aria-hidden="true"
                       />

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { handleAnchorClick } from "@/lib/utils";
 import { SLIDER_ITEMS, REVIEW_SLIDER_ITEMS } from "@/lib/constants";
 import { Slider } from "@/components/ui/slider";
 import VideoCard from "@/components/ui/video-card";

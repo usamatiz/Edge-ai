@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { BRAND_NAME } from '@/lib/constants'
-import { FaFacebook, FaYoutube, FaInstagram, FaLinkedin } from 'react-icons/fa'
+// import { FaFacebook, FaYoutube, FaInstagram, FaLinkedin } from 'react-icons/fa'
 
 export default function Footer() {
 
@@ -13,12 +13,12 @@ export default function Footer() {
         { name: 'Reservation', href: '/reservation' }
     ]
 
-    const socialLinks = [
-        { icon: FaFacebook, href: '#', label: 'Facebook' },
-        { icon: FaYoutube, href: '#', label: 'YouTube' },
-        { icon: FaInstagram, href: '#', label: 'Instagram' },
-        { icon: FaLinkedin, href: '#', label: 'LinkedIn' }
-    ]
+    // const socialLinks = [
+    //     { icon: FaFacebook, href: '#', label: 'Facebook' },
+    //     { icon: FaYoutube, href: '#', label: 'YouTube' },
+    //     { icon: FaInstagram, href: '#', label: 'Instagram' },
+    //     { icon: FaLinkedin, href: '#', label: 'LinkedIn' }
+    // ]
 
 
     return (
