@@ -47,7 +47,7 @@ export default function Footer() {
                             </p>
                             
                             {/* Social Media */}
-                            <div className="flex flex-col gap-4">
+                            {/* <div className="flex flex-col gap-4">
                                 <h3 className="text-[#282828] font-semibold text-[26px]">Follow Us</h3>
                                 <div className="flex gap-8">
                                     {socialLinks.map((social, index) => (
@@ -60,7 +60,7 @@ export default function Footer() {
                                         </Link>
                                     ))}
                                 </div>
-                            </div>
+                            </div> */}
                         </div>
                         
                         {/* Right Section - Navigation Links */}

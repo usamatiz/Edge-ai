@@ -131,7 +131,7 @@ export function ProcessSteps({ className }: ProcessStepsProps) {
         {/* CTA Button */}
         <div className="text-center">
           <Link 
-            href="#" 
+            href="/login" 
             className="inline-flex items-center gap-3 bg-transparent border-2 border-[#5046E5] text-[#5046E5] hover:bg-[#5046E5] hover:text-white py-[15.4px] rounded-full text-[16px] font-semibold transition-all duration-300 group max-w-[288px] w-full text-center justify-center mx-auto"
           >
             Learn More About Our Process

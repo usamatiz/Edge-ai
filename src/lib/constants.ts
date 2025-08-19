@@ -1,12 +1,13 @@
 export const BRAND_NAME = "EdgeAIRealty";
 
 export const NAVIGATION_ITEMS = [
-  { label: "Getting Started", href: "/getting-started" },
-  { label: "How it works", href: "/how-it-works" },
-  { label: "Benefits", href: "/benefits" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "FAQ", href: "/faq" },
-  { label: "Contact", href: "/contact" },
+  { label: "Home", href: "#home" },
+  { label: "Getting Started", href: "#getting-started" },
+  { label: "How it works", href: "#how-it-works" },
+  { label: "Benefits", href: "#benefits" },
+  { label: "Pricing", href: "#pricing" },
+  { label: "FAQ", href: "#faq" },
+  { label: "Contact", href: "#contact" },
 ];
 
 export const BREAKPOINTS = {

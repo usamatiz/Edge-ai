@@ -1,0 +1,552 @@
+'use client'
+
+import { useState, useRef, useEffect } from 'react'
+import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react'
+
+interface SigninModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onOpenSignup?: () => void
+}
+
+interface FormData {
+  email: string
+  password: string
+}
+
+interface FormErrors {
+  email: string
+  password: string
+  general?: string
+}
+
+interface UserData {
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  createdAt: string
+}
+
+export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninModalProps) {
+  const [formData, setFormData] = useState<FormData>({
+    email: '',
+    password: ''
+  })
+  const [errors, setErrors] = useState<FormErrors>({
+    email: '',
+    password: ''
+  })
+  const [showPassword, setShowPassword] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
+  const [submissionCount, setSubmissionCount] = useState(0)
+  const [lastSubmissionTime, setLastSubmissionTime] = useState(0)
+  
+  // State to store registered users (this would come from your signup modal or API)
+  const [registeredUsers, setRegisteredUsers] = useState<UserData[]>([])
+  
+  // Toast state
+  const [showToast, setShowToast] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
+  const [toastType, setToastType] = useState<'success' | 'error'>('success')
+  
+  // Refs for focus management
+  const modalRef = useRef<HTMLDivElement>(null)
+  const firstInputRef = useRef<HTMLInputElement>(null)
+  const errorAnnouncementRef = useRef<HTMLDivElement>(null)
+
+  // Rate limiting check
+  const checkRateLimit = (): boolean => {
+    const now = Date.now()
+    const timeSinceLastSubmission = now - lastSubmissionTime
+    
+    if (timeSinceLastSubmission < 2000) { // 2 seconds cooldown
+      return false
+    }
+    
+    if (submissionCount >= 5 && timeSinceLastSubmission < 60000) { // 5 attempts per minute
+      return false
+    }
+    
+    return true
+  }
+
+  // Show toast function
+  const showToastMessage = (message: string, type: 'success' | 'error' = 'success') => {
+    setToastMessage(message)
+    setToastType(type)
+    setShowToast(true)
+    
+    // Auto hide toast after 3 seconds
+    setTimeout(() => {
+      setShowToast(false)
+    }, 3000)
+  }
+
+  const handleInputChange = (field: keyof FormData, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value.trim()
+    }))
+    
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }))
+    }
+  }
+
+  const handleInputBlur = (field: keyof FormData) => {
+    // Validate on blur
+    validateField(field, formData[field])
+  }
+
+  const validateField = (field: keyof FormData, value: string) => {
+    const newErrors = { ...errors }
+
+    switch (field) {
+      case 'email':
+        if (!value.trim()) {
+          newErrors.email = 'Email is required'
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          newErrors.email = 'Please enter a valid email address'
+        }
+        break
+      case 'password':
+        if (!value.trim()) {
+          newErrors.password = 'Password is required'
+        } else if (value.length < 6) {
+          newErrors.password = 'Password must be at least 6 characters'
+        }
+        break
+    }
+
+    setErrors(newErrors)
+  }
+
+  const validateForm = () => {
+    const newErrors = {
+      email: '',
+      password: ''
+    }
+
+    // Validate each field
+    const fields: (keyof FormData)[] = ['email', 'password']
+    fields.forEach(field => validateField(field, formData[field]))
+
+    // Set the errors
+    setErrors(newErrors)
+    
+    // Return true if no errors, false if there are errors
+    return !Object.values(newErrors).some(error => error !== '')
+  }
+
+  const handleSignin = async () => {
+    // Rate limiting check
+    if (!checkRateLimit()) {
+      const errorMessage = submissionCount >= 5 
+        ? 'Too many attempts. Please wait 1 minute before trying again.'
+        : 'Please wait 2 seconds between submissions.'
+      
+      showToastMessage(errorMessage, 'error')
+      return
+    }
+
+    if (!validateForm()) {
+      // Announce errors to screen readers
+      if (errorAnnouncementRef.current) {
+        errorAnnouncementRef.current.textContent = 'Form has validation errors. Please check all fields.'
+      }
+      showToastMessage('Please fix the validation errors before submitting.', 'error')
+      return
+    }
+
+    setIsSubmitting(true)
+    setSubmissionCount(prev => prev + 1)
+    setLastSubmissionTime(Date.now())
+
+    try {
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Check if user exists (in a real app, this would be an API call)
+      const userExists = registeredUsers.some(user => 
+        user.email.toLowerCase() === formData.email.toLowerCase()
+      )
+      
+      if (!userExists) {
+        showToastMessage('Invalid email or password. Please try again.', 'error')
+        return
+      }
+
+      // In a real app, you would verify the password here
+      // For demo purposes, we'll just check if the email exists
+      
+      // Show success message
+      setShowSuccess(true)
+      showToastMessage('Login successful! Welcome back to EdgeAi.', 'success')
+      
+      // Save email if "remember me" is checked
+      if (rememberMe) {
+        localStorage.setItem('signinEmail', formData.email)
+      } else {
+        localStorage.removeItem('signinEmail')
+      }
+
+      // Auto-close after success message
+      setTimeout(() => {
+        handleClose()
+      }, 2000)
+
+    } catch (error) {
+      showToastMessage('Something went wrong. Please try again.', 'error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleGoogleSignin = () => {
+    // Handle Google signin logic here
+    console.log('Google signin clicked')
+    showToastMessage('Google signin feature coming soon!', 'error')
+  }
+
+  const handleForgotPassword = () => {
+    // Handle forgot password logic here
+    console.log('Forgot password clicked')
+    showToastMessage('Password reset feature coming soon!', 'error')
+  }
+
+  // Focus management and accessibility
+  useEffect(() => {
+    if (isOpen) {
+      // Focus first input when modal opens
+      setTimeout(() => {
+        firstInputRef.current?.focus()
+      }, 100)
+
+      // Trap focus within modal
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          handleClose()
+        }
+        
+        if (e.key === 'Tab' && modalRef.current) {
+          const focusableElements = modalRef.current.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          )
+          const firstElement = focusableElements[0] as HTMLElement
+          const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement
+
+          if (e.shiftKey) {
+            if (document.activeElement === firstElement) {
+              e.preventDefault()
+              lastElement.focus()
+            }
+          } else {
+            if (document.activeElement === lastElement) {
+              e.preventDefault()
+              firstElement.focus()
+            }
+          }
+        }
+      }
+
+      document.addEventListener('keydown', handleKeyDown)
+      return () => document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen])
+
+  // Load saved email on mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('signinEmail')
+    if (savedEmail && !isOpen) {
+      setFormData(prev => ({ ...prev, email: savedEmail }))
+      setRememberMe(true)
+    }
+  }, [])
+
+  const handleClose = () => {
+    setFormData({
+      email: '',
+      password: ''
+    })
+    setErrors({
+      email: '',
+      password: ''
+    })
+    setShowSuccess(false)
+    setIsSubmitting(false)
+    setRememberMe(false)
+    onClose()
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <>
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed top-4 right-4 z-[60] animate-in slide-in-from-right-2">
+          <div className={`px-4 py-3 rounded-lg shadow-lg max-w-sm ${
+            toastType === 'success' 
+              ? 'bg-green-500 text-white' 
+              : 'bg-red-500 text-white'
+          }`}>
+            <div className="flex items-center gap-2">
+              {toastType === 'success' ? (
+                <CheckCircle className="w-5 h-5" />
+              ) : (
+                <AlertCircle className="w-5 h-5" />
+              )}
+              <p className="text-sm font-medium">{toastMessage}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+        <div 
+          ref={modalRef}
+          className="bg-white rounded-[12px] md:px-[55px] px-4 pt-10 pb-10 max-w-[820px] w-full max-h-[615px] flex flex-col relative"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="signin-modal-title"
+          aria-describedby="signin-modal-description"
+        >
+          {/* Screen reader announcements */}
+          <div 
+            ref={errorAnnouncementRef}
+            className="sr-only"
+            aria-live="polite"
+            aria-atomic="true"
+          />
+          <button
+              onClick={handleClose}
+              className="cursor-pointer ml-4 absolute top-[30px] right-[30px]"
+              aria-label="Close signin modal"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22.5 1.5L1.5 22.5M1.5 1.5L22.5 22.5" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+          </button>
+          
+          {/* Success Message */}
+          {showSuccess && (
+            <div className="absolute inset-0 bg-white rounded-[12px] flex items-center justify-center z-10">
+              <div className="text-center">
+                <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                <h3 className="text-2xl font-semibold text-gray-800 mb-2">Login Successful!</h3>
+                <p className="text-gray-600">Welcome back to EdgeAi. You can now start creating amazing videos.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Modal Header */}
+          <div className="flex items-center justify-between flex-shrink-0">
+            <div className="flex-1">
+              <h3 id="signin-modal-title" className="md:text-[48px] text-[32px] font-semibold text-[#282828] text-center">
+                Welcome Back to <span className="text-[#5046E5]">EdgeAi</span>
+              </h3>
+              <p id="signin-modal-description" className="text-[#667085] text-[16px] text-center mt-2">
+                Please enter your credentials to access your <br /> account and create videos seamlessly.
+              </p>
+            </div>
+          </div>
+
+          {/* Modal Content */}
+          <div className="pt-7 overflow-y-auto flex-1 px-2">
+            {/* General Error Message */}
+            {errors.general && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                <p className="text-red-700 text-sm">{errors.general}</p>
+              </div>
+            )}
+
+            <form onSubmit={(e) => { e.preventDefault(); handleSignin(); }}>
+              {/* Form Fields */}
+              <div className="space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Email */}
+                <div className="w-full mb-[10px]">
+                  <label htmlFor="email" className="block text-base font-normal text-[#5F5F5F] mb-1">
+                    Email
+                  </label>
+                  <input
+                    ref={firstInputRef}
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    onBlur={() => handleInputBlur('email')}
+                    placeholder="Enter Email"
+                    aria-describedby={errors.email ? 'email-error' : undefined}
+                    aria-invalid={!!errors.email}
+                    className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
+                      errors.email ? 'ring-2 ring-red-500' : ''
+                    }`}
+                  />
+                  {errors.email && (
+                    <p id="email-error" className="text-red-500 text-sm mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.email}
+                    </p>
+                  )}
+                </div>
+
+                {/* Password */}
+                <div className="w-full relative">
+                  <label htmlFor="password" className="block text-base font-normal text-[#5F5F5F] mb-1">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={formData.password}
+                      onChange={(e) => handleInputChange('password', e.target.value)}
+                      onBlur={() => handleInputBlur('password')}
+                      placeholder="**********"
+                      aria-describedby={errors.password ? 'password-error' : undefined}
+                      aria-invalid={!!errors.password}
+                      className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white pr-12 ${
+                        errors.password ? 'ring-2 ring-red-500' : ''
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute cursor-pointer right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5 text-[#98A2B3]" /> : <Eye className="w-5 h-5 text-[#98A2B3]" />}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p id="password-error" className="text-red-500 text-sm mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.password}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Remember Me and Forgot Password */}
+              <div className="flex items-center justify-between mb-6">
+                <label className="flex items-center gap-2 cursor-pointer">
+                    <div className="relative">
+                    <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="sr-only"
+                    />
+                    <div className={`w-[16px] h-[16px] border rounded-[6px] transition-all duration-200 ${
+                        rememberMe 
+                        ? 'bg-[#5046E5] border-[#5046E5]' 
+                        : 'bg-transparent border-[#D0D5DD]'
+                    }`}>
+                        {rememberMe && (
+                        <svg
+                            className="w-3 h-3 text-white absolute top-0.5 left-0.5"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                        >
+                            <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                            />
+                        </svg>
+                        )}
+                    </div>
+                    </div>
+                    <span className="text-[#5F5F5F] text-base">Remember me</span>
+                </label>
+                <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    className="text-[#577FB9] text-sm font-semibold hover:underline cursor-pointer"
+                >
+                    Forgot password?
+                </button>
+                </div>
+
+              {/* Sign In Button */}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`w-full py-[11.4px] px-6 rounded-full font-semibold text-[20px] border-2 transition-colors duration-300 cursor-pointer mb-6 flex items-center justify-center gap-2 ${
+                  isSubmitting
+                    ? 'bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed'
+                    : 'bg-[#5046E5] text-white border-[#5046E5] hover:bg-transparent hover:text-[#5046E5]'
+                }`}
+                aria-describedby={isSubmitting ? 'submitting-status' : undefined}
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Signing In...
+                  </>
+                ) : (
+                  'Log in'
+                )}
+              </button>
+              
+              {isSubmitting && (
+                <div id="submitting-status" className="sr-only" aria-live="polite">
+                  Signing you in, please wait...
+                </div>
+              )}
+
+              {/* Google Sign In Button */}
+              <button
+                type="button"
+                onClick={handleGoogleSignin}
+                className="w-[220px] mx-auto bg-white text-[#344054] py-[9.2px] px-2 rounded-full font-normal text-[16px] border border-[#D0D5DD] hover:bg-[#D0D5DD] transition-colors duration-300 cursor-pointer flex items-center justify-center gap-x-3"
+              >
+                <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <g clipPath="url(#clip0_7697_226)">
+                  <path d="M24.2663 12.2764C24.2663 11.4607 24.2001 10.6406 24.059 9.83807H12.7402V14.4591H19.222C18.953 15.9494 18.0888 17.2678 16.8233 18.1056V21.1039H20.6903C22.9611 19.0139 24.2663 15.9274 24.2663 12.2764Z" fill="#4285F4"/>
+                  <path d="M12.7401 24.0008C15.9766 24.0008 18.7059 22.9382 20.6945 21.1039L16.8276 18.1055C15.7517 18.8375 14.3627 19.252 12.7445 19.252C9.61388 19.252 6.95946 17.1399 6.00705 14.3003H2.0166V17.3912C4.05371 21.4434 8.2029 24.0008 12.7401 24.0008Z" fill="#34A853"/>
+                  <path d="M6.00277 14.3003C5.50011 12.8099 5.50011 11.1961 6.00277 9.70575V6.61481H2.01674C0.314734 10.0056 0.314734 14.0004 2.01674 17.3912L6.00277 14.3003Z" fill="#FBBC04"/>
+                  <path d="M12.7401 4.74966C14.4509 4.7232 16.1044 5.36697 17.3434 6.54867L20.7695 3.12262C18.6001 1.0855 15.7208 -0.034466 12.7401 0.000808666C8.2029 0.000808666 4.05371 2.55822 2.0166 6.61481L6.00264 9.70575C6.95064 6.86173 9.60947 4.74966 12.7401 4.74966Z" fill="#EA4335"/>
+                  </g>
+                  <defs>
+                  <clipPath id="clip0_7697_226">
+                  <rect width="24" height="24" fill="white" transform="translate(0.5)"/>
+                  </clipPath>
+                  </defs>
+                </svg>
+
+                Sign in with Google
+              </button>
+
+              {/* Footer Link */}
+              <div className="text-center mt-6">
+                <p className="text-[#101828] text-base font-normal">
+                  No account yet?{' '}
+                  <button
+                    type="button"
+                    className="text-[#5046E5] text-[14px] font-semibold hover:underline cursor-pointer"
+                    onClick={() => {
+                      // Close signin modal and open signup modal
+                      onClose()
+                      onOpenSignup?.()
+                    }}
+                  >
+                    Sign up
+                  </button>
+                </p>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}

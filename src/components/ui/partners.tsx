@@ -72,7 +72,7 @@ export default function Partners(){
     
 
     return(
-        <div ref={containerRef} className="bg-[#060609] px-3 pb-20 pt-32 -mt-16" style={{ backgroundImage: 'url(/images/Vector.png)', backgroundSize: 'cover', backgroundPosition: 'top', backgroundRepeat: 'no-repeat' }}>
+        <div ref={containerRef} className="bg-[#060609] px-3 pb-20 pt-32 -mt-16" style={{ backgroundImage: 'url(/images/price-bg.png)', backgroundSize: 'cover', backgroundPosition: 'top', backgroundRepeat: 'no-repeat', backgroundAttachment: 'fixed' }}>
             <div className="max-w-[1340px] mx-auto">
                 <h1 className="text-center text-white text-[20px] font-semibold mb-7">TRUSTED BY LEADING REAL ESTATE PROFESSIONALS</h1>
                 <div className="flex flex-wrap justify-center items-center gap-10">

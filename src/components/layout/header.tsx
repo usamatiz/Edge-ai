@@ -5,8 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MobileSidebar } from "./mobile-sidebar";
 import { NAVIGATION_ITEMS, BRAND_NAME, ANIMATIONS } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+import { cn, handleAnchorClick } from "@/lib/utils";
 import { useAnalytics } from "@/hooks/use-analytics";
+import { useActiveSection } from "@/hooks/use-active-section";
+import SignupModal from "@/components/ui/signup-modal";
+import SigninModal from "@/components/ui/signin-modal";
 
 // Throttle function for scroll performance
 function throttle<T extends (...args: unknown[]) => unknown>(
@@ -35,8 +38,14 @@ function throttle<T extends (...args: unknown[]) => unknown>(
 export function Header() {
   const [isScrolled, setIsScrolled] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isSignupModalOpen, setIsSignupModalOpen] = React.useState(false);
+  const [isSigninModalOpen, setIsSigninModalOpen] = React.useState(false);
   const pathname = usePathname();
   const { trackNavigation, trackButtonClick } = useAnalytics();
+  
+  // Track active section based on scroll position
+  const sectionIds = ['home', 'getting-started', 'how-it-works', 'benefits', 'pricing', 'faq', 'contact'];
+  const activeSection = useActiveSection(sectionIds);
 
   // Throttled scroll handler for better performance
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -92,11 +101,6 @@ export function Header() {
               href="/"
               className="text-[#5046E5] text-xl font-bold"
               aria-label={`${BRAND_NAME} - Go to homepage`}
-              onClick={() => {
-                if (pathname !== "/") {
-                  trackNavigation(pathname, "/", "click");
-                }
-              }}
             >
             EdgeAI<span className="text-[#E54B46] font-bold">Realty</span>
             </Link>
@@ -108,7 +112,8 @@ export function Header() {
               aria-label="Main navigation"
             >
               {NAVIGATION_ITEMS.map((item) => {
-                const isActive = pathname === item.href;
+                const sectionId = item.href.substring(1); // Remove the # from href
+                const isActive = activeSection === sectionId;
                 return (
                   <Link
                     key={item.label}
@@ -121,8 +126,11 @@ export function Header() {
                     )}
                     aria-current={isActive ? "page" : undefined}
                     aria-label={`${item.label}${isActive ? " (current page)" : ""}`}
-                    onClick={() => {
-                      if (!isActive) {
+                    onClick={(e) => {
+                      if (handleAnchorClick(item.href)) {
+                        e.preventDefault();
+                        trackNavigation(pathname, item.href, "click");
+                      } else if (!isActive) {
                         trackNavigation(pathname, item.href, "click");
                       }
                     }}
@@ -147,27 +155,30 @@ export function Header() {
 
             {/* Desktop Action Buttons */}
             <div className="hidden lg:flex items-center space-x-3">
-              <Link
-                href="/login"
+              <button
+                onClick={() => {
+                  setIsSigninModalOpen(true);
+                  trackButtonClick("login", "header", "open_modal");
+                }}
                 className={cn(
-                  "inline-flex text-[#282828] py-[10.9px] px-[19.5px] rounded-full hover:bg-gray-200 transition-all duration-300",
+                  "inline-flex cursor-pointer text-[#282828] py-[10.9px] px-[19.5px] rounded-full hover:bg-gray-200 transition-all duration-300",
                 )}
                 aria-label="Log in to your account"
-                onClick={() => trackButtonClick("login", "header", "navigate")}
               >
                 Log In
-              </Link>
-              <Link
-                href="/register"
+              </button>
+              <button
+                onClick={() => {
+                  setIsSignupModalOpen(true);
+                  trackButtonClick("register", "header", "open_modal");
+                }}
                 className={cn(
-                  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium focus-visible:outline-none py-[10.9px] px-[19.5px] bg-gradient-to-r from-[#5046E5] to-[#3A2DFD] text-white border border-[#5046e5] hover:bg-transparent hover:[background-image:none] hover:text-[#5046e5] transition-all duration-500"
+                  "inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium focus-visible:outline-none py-[10.9px] px-[19.5px] bg-[#5046E5] text-white border border-[#5046e5] hover:bg-transparent  hover:text-[#5046e5] transition-all duration-500"
                 )}
-                                
                 aria-label="Create a new account"
-                onClick={() => trackButtonClick("register", "header", "navigate")}
               >
                 Sign Up
-              </Link>
+              </button>
             </div>
 
             {/* Mobile Menu Button */}
@@ -217,6 +228,20 @@ export function Header() {
       <MobileSidebar
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
+      />
+
+      {/* Signup Modal */}
+      <SignupModal
+        isOpen={isSignupModalOpen}
+        onClose={() => setIsSignupModalOpen(false)}
+        onOpenSignin={() => setIsSigninModalOpen(true)}
+      />
+
+      {/* Signin Modal */}
+      <SigninModal
+        isOpen={isSigninModalOpen}
+        onClose={() => setIsSigninModalOpen(false)}
+        onOpenSignup={() => setIsSignupModalOpen(true)}
       />
     </>
   );

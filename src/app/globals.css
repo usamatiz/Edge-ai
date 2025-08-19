@@ -100,6 +100,19 @@ p, span, div, a, button, input, textarea, select, label {
   width: 100%;
 }
 
+/* Screen reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
@@ -137,6 +150,18 @@ html {
 }
 
 
+.spinner {
+   width: 240px;
+   height: 240px;
+   border-radius: 50%;
+   background: conic-gradient(#0000 10%,#5046E5);
+   -webkit-mask: radial-gradient(farthest-side,#0000 calc(100% - 22px),#000 0);
+   animation: spinner-zp9dbg 1s infinite linear;
+}
 
-
+@keyframes spinner-zp9dbg {
+   to {
+      transform: rotate(1turn);
+   }
+}
 

@@ -4,8 +4,11 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAVIGATION_ITEMS, BRAND_NAME, ANIMATIONS } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+import { cn, handleAnchorClick, smoothScrollTo } from "@/lib/utils";
 import { useAnalytics } from "@/hooks/use-analytics";
+import { useActiveSection } from "@/hooks/use-active-section";
+import SignupModal from "@/components/ui/signup-modal";
+import SigninModal from "@/components/ui/signin-modal";
 
 interface MobileSidebarProps {
   isOpen: boolean;
@@ -77,6 +80,12 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const pathname = usePathname();
   const containerRef = useFocusTrap(isOpen);
   const { trackNavigation, trackButtonClick } = useAnalytics();
+  const [isSignupModalOpen, setIsSignupModalOpen] = React.useState(false);
+  const [isSigninModalOpen, setIsSigninModalOpen] = React.useState(false);
+  
+  // Track active section based on scroll position
+  const sectionIds = ['home', 'getting-started', 'how-it-works', 'benefits', 'pricing', 'faq', 'contact'];
+  const activeSection = useActiveSection(sectionIds);
   
   // Close sidebar when clicking outside
   React.useEffect(() => {
@@ -139,11 +148,14 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
           
           <div className="relative flex items-center justify-between">
             <Link 
-              href="/" 
+              href="#home" 
               className="group flex items-center space-x-3  rounded-lg p-1 text-[#5046E5] text-2xl font-bold"
-              onClick={() => {
-                onClose();
-                if (pathname !== "/") {
+              onClick={(e) => {
+                if (handleAnchorClick("#home", onClose)) {
+                  e.preventDefault();
+                  trackNavigation(pathname, "#home", "click");
+                } else {
+                  onClose();
                   trackNavigation(pathname, "/", "click");
                 }
               }}
@@ -195,9 +207,10 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
               <div className="text-xs font-semibold text-[#5F5F5F] uppercase tracking-wider mb-4 px-2">
                 Navigation
               </div>
-              {NAVIGATION_ITEMS.map((item, index) => {
-                const isActive = pathname === item.href;
-                return (
+                             {NAVIGATION_ITEMS.map((item, index) => {
+                 const sectionId = item.href.substring(1); // Remove the # from href
+                 const isActive = activeSection === sectionId;
+                 return (
                   <Link
                     key={item.label}
                     href={item.href}
@@ -207,10 +220,15 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                         ? "bg-gradient-to-r from-[#5046E5] to-[#3A2DFD] text-white"
                         : "text-gray-700 hover:text-gray-900 hover:bg-gray-100/90"
                     )}
-                    onClick={() => {
-                      onClose();
-                      if (!isActive) {
+                    onClick={(e) => {
+                      if (handleAnchorClick(item.href, onClose)) {
+                        e.preventDefault();
                         trackNavigation(pathname, item.href, "click");
+                      } else {
+                        onClose();
+                        if (!isActive) {
+                          trackNavigation(pathname, item.href, "click");
+                        }
                       }
                     }}
                     aria-current={isActive ? "page" : undefined}
@@ -271,7 +289,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
             
             <Link
               href="/login"
-              className="group relative w-full inline-flex items-center justify-center px-6 py-4 text-base font-medium bg-white border border-gray-200 rounded-2xl hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 shadow-sm focus:outline-none"
+              className="group cursor-pointer relative w-full inline-flex items-center justify-center px-6 py-4 text-base font-medium bg-white border border-gray-200 rounded-2xl hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 shadow-sm focus:outline-none"
               onClick={() => {
                 onClose();
                 trackButtonClick("login", "mobile_sidebar", "navigate");
@@ -284,28 +302,47 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
               </span>
             </Link>
             
-            <Link
-              href="/register"
-              className="group relative w-full inline-flex items-center justify-center px-6 py-4 text-base font-medium bg-gradient-to-r from-[#5046E5] to-[#3A2DFD] text-white rounded-2xl hover:from-[#3A2DFD] hover:to-[#5046E5] transition-all duration-300 shadow-sm hover:shadow-md focus:outline-none"
-              onClick={() => {
-                onClose();
-                trackButtonClick("register", "mobile_sidebar", "navigate");
-              }}
-              aria-label="Create a new account"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <span className="relative z-10 font-bold">
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  onClose();
+                  setIsSigninModalOpen(true);
+                  trackButtonClick("login", "mobile_sidebar", "open_modal");
+                }}
+                className="flex-1 inline-flex items-center justify-center px-6 py-4 text-base font-medium text-[#5046E5] border-2 border-[#5046E5] rounded-2xl hover:bg-[#5046E5] hover:text-white transition-all duration-300 focus:outline-none"
+                aria-label="Log in to your account"
+              >
+                Log In
+              </button>
+              <button
+                onClick={() => {
+                  onClose();
+                  setIsSignupModalOpen(true);
+                  trackButtonClick("register", "mobile_sidebar", "open_modal");
+                }}
+                className="flex-1 inline-flex items-center justify-center px-6 py-4 text-base font-medium bg-gradient-to-r from-[#5046E5] to-[#3A2DFD] text-white rounded-2xl hover:from-[#3A2DFD] hover:to-[#5046E5] transition-all duration-300 shadow-sm hover:shadow-md focus:outline-none"
+                aria-label="Create a new account"
+              >
                 Sign Up
-              </span>
-              <div className="absolute right-4 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </div>
-            </Link>
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Signup Modal */}
+      <SignupModal
+        isOpen={isSignupModalOpen}
+        onClose={() => setIsSignupModalOpen(false)}
+        onOpenSignin={() => setIsSigninModalOpen(true)}
+      />
+
+      {/* Signin Modal */}
+      <SigninModal
+        isOpen={isSigninModalOpen}
+        onClose={() => setIsSigninModalOpen(false)}
+        onOpenSignup={() => setIsSignupModalOpen(true)}
+      />
     </>
   );
 }

@@ -126,7 +126,7 @@ export function FeaturesSection({ className }: FeaturesSectionProps) {
               Let&apos;s Build it.
             </h3>
             
-            <Link href="#" className="group hover:bg-white border hover:border-[#6366f1] border-white text-white hover:text-[#6366f1] bg-transparent w-full py-[11.2px] rounded-full text-[14px] md:text-[16px] justify-center font-medium transition-all duration-300 flex items-center gap-2">
+            <Link href="/login" className="group hover:bg-white border hover:border-[#6366f1] border-white text-white hover:text-[#6366f1] bg-transparent w-full py-[11.2px] rounded-full text-[14px] md:text-[16px] justify-center font-medium transition-all duration-300 flex items-center gap-2">
               Learn More About Our Process
               <svg 
                 className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" 

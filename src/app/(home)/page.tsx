@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { handleAnchorClick } from "@/lib/utils";
 import { SLIDER_ITEMS, REVIEW_SLIDER_ITEMS } from "@/lib/constants";
 import { Slider } from "@/components/ui/slider";
 import VideoCard from "@/components/ui/video-card";
@@ -11,12 +12,13 @@ import { ContactForm, FeaturesSection } from "@/components/ui";
 import FAQSection from "@/components/ui/FAQsection";
 import { ReviewSlider } from "@/components/ui/review-slider";
 import { ProcessSteps } from "@/components/ui/process-steps";
+import PricingSection from "@/components/ui/pricing-section";
 
 export default function HomePage() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative pt-14 lg:pt-20 px-3">
+      <section id="home" className="relative pt-14 lg:pt-20 px-3">
         <div className="max-w-[1440px] mx-auto pb-12 relative z-10">
           <div className="text-center">
             <h1 className="text-[36px] md:text-6xl lg:text-[72px] font-semibold text-gray-900 mb-5 lg:leading-[84px] md:leading-[72px] leading-[47px]">
@@ -28,13 +30,13 @@ export default function HomePage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                href="/register"
+                href="/login"
                 className="inline-flex items-center justify-center px-[26.5px] py-[13.2px] text-base font-semibold bg-transparent border border-[#5046E5] text-[#5046E5] rounded-full hover:bg-gradient-to-r hover:from-[#5046E5] hover:to-[#3A2DFD] hover:text-white transition-all duration-300"
               >
                 Watch Demo
               </Link>
               <Link
-                href="#demo"
+                href="/create-video"
                 className="inline-flex items-center justify-center px-[26.5px] py-[13.2px] text-base font-semibold bg-gradient-to-r from-[#5046E5] to-[#3A2DFD] text-white rounded-full transition-all !duration-300 hover:[background-image:none] hover:bg-transparent hover:text-[#5046E5] border border-[#5046E5]"
               >
                 Get Started
@@ -46,32 +48,51 @@ export default function HomePage() {
         <VideoCard />
       </section>
 
+
       <Partners/>
 
       {/* Slider Section */}
-      <Slider 
-            items={SLIDER_ITEMS}
-            autoPlay={true}
-            autoPlayInterval={5000}
-            showArrows={true}
-            showDots={true}
-            className="mb-16"
-          />
-
+      <section id="how-it-works" className="mb-16">
+        <Slider 
+          items={SLIDER_ITEMS}
+          autoPlay={true}
+          autoPlayInterval={5000}
+          showArrows={true}
+          showDots={true}
+          className="mb-16"
+        />
+      </section>
       <ActionCard/>
-      <ReviewSlider
-            items={REVIEW_SLIDER_ITEMS}
-            autoPlay={true}
-            autoPlayInterval={5000}
-            showArrows={true}
-            showDots={true}
-            className="mb-16"
-          />
-      <FAQSection/>
-      <FeaturesSection/>
-      <ProcessSteps/>
 
-      <ContactForm/>
+      <section id="getting-started">
+        <ProcessSteps/>
+      </section>
+      
+
+      <section id="benefits">
+        <FeaturesSection/>
+      </section>
+
+      <section id="pricing">
+        <PricingSection/>
+      </section>
+
+      
+      <ReviewSlider
+        items={REVIEW_SLIDER_ITEMS}
+        autoPlay={true}
+        autoPlayInterval={5000}
+        showArrows={true}
+        showDots={true}
+        className="mb-0"
+      />
+      <section id="faq">
+        <FAQSection/>
+      </section>
+
+      <section id="contact">
+        <ContactForm/>
+      </section>
     </div>
   );
 }
