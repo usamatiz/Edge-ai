@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react'
+import { sanitizeInput, RateLimiter, CSRFProtection } from '@/lib/utils'
 
 interface SignupModalProps {
   isOpen: boolean
@@ -64,8 +65,9 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
   const [showSuccess, setShowSuccess] = useState(false)
   const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>({ score: 0, feedback: [] })
   const [rememberForm, setRememberForm] = useState(false)
-  const [submissionCount, setSubmissionCount] = useState(0)
-  const [lastSubmissionTime, setLastSubmissionTime] = useState(0)
+  // Legacy submission tracking (now using RateLimiter class)
+  // const [submissionCount, setSubmissionCount] = useState(0)
+  // const [lastSubmissionTime, setLastSubmissionTime] = useState(0)
   
   // State to store registered users
   const [registeredUsers, setRegisteredUsers] = useState<UserData[]>([])
@@ -130,26 +132,40 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
     return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`
   }
 
-  // Input sanitization
-  const sanitizeInput = (value: string): string => {
-    return value.trim().replace(/[<>]/g, '')
+  // Enhanced input sanitization with security utilities
+  const enhancedSanitizeInput = (value: string, type: 'text' | 'email' | 'phone' | 'name' = 'text'): string => {
+    return sanitizeInput(value, type)
   }
 
-  // Rate limiting check
-  const checkRateLimit = (): boolean => {
-    const now = Date.now()
-    const timeSinceLastSubmission = now - lastSubmissionTime
-    
-    if (timeSinceLastSubmission < 2000) { // 2 seconds cooldown
-      return false
+  // Initialize rate limiter for form submissions
+  const rateLimiter = useRef(new RateLimiter(5, 60000)) // 5 attempts per minute
+
+  // CSRF token management
+  const [csrfToken, setCsrfToken] = useState<string>('')
+  
+  useEffect(() => {
+    if (isOpen) {
+      // Generate CSRF token when modal opens
+      const token = CSRFProtection.generateToken()
+      setCsrfToken(token)
     }
+  }, [isOpen])
+
+  // Legacy rate limiting check (now using RateLimiter class)
+  // const checkRateLimit = (): boolean => {
+  //   const now = Date.now()
+  //   const timeSinceLastSubmission = now - lastSubmissionTime
     
-    if (submissionCount >= 5 && timeSinceLastSubmission < 60000) { // 5 attempts per minute
-      return false
-    }
+  //   if (timeSinceLastSubmission < 2000) { // 2 seconds cooldown
+  //     return false
+  //   }
     
-    return true
-  }
+  //   if (submissionCount >= 5 && timeSinceLastSubmission < 60000) { // 5 attempts per minute
+  //     return false
+  //   }
+    
+  //   return true
+  // }
 
   // Show toast function
   const showToastMessage = (message: string, type: 'success' | 'error' = 'success') => {
@@ -166,11 +182,15 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
   const handleInputChange = (field: keyof FormData, value: string) => {
     let processedValue = value
 
-    // Apply field-specific processing
+    // Apply field-specific processing with enhanced security
     if (field === 'phone') {
-      processedValue = formatPhoneNumber(value)
+      processedValue = formatPhoneNumber(enhancedSanitizeInput(value, 'phone'))
+    } else if (field === 'email') {
+      processedValue = enhancedSanitizeInput(value, 'email')
+    } else if (field === 'firstName' || field === 'lastName') {
+      processedValue = enhancedSanitizeInput(value, 'name')
     } else {
-      processedValue = sanitizeInput(value)
+      processedValue = enhancedSanitizeInput(value, 'text')
     }
 
     setFormData(prev => ({
@@ -276,13 +296,21 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
   }
 
   const handleSignup = async () => {
-    // Rate limiting check
-    if (!checkRateLimit()) {
-      const errorMessage = submissionCount >= 5 
-        ? 'Too many attempts. Please wait 1 minute before trying again.'
-        : 'Please wait 2 seconds between submissions.'
+    // Enhanced rate limiting check using RateLimiter class
+    const clientId = `signup_${formData.email || 'anonymous'}`
+    if (rateLimiter.current.isRateLimited(clientId)) {
+      const remaining = rateLimiter.current.getRemainingAttempts(clientId)
+      const errorMessage = remaining === 0 
+        ? 'Too many signup attempts. Please wait 1 minute before trying again.'
+        : `Please wait before trying again. ${remaining} attempts remaining.`
       
       showToastMessage(errorMessage, 'error')
+      return
+    }
+
+    // CSRF token validation
+    if (!CSRFProtection.validateToken(csrfToken)) {
+      showToastMessage('Security token invalid. Please refresh and try again.', 'error')
       return
     }
 
@@ -296,8 +324,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
     }
 
     setIsSubmitting(true)
-    setSubmissionCount(prev => prev + 1)
-    setLastSubmissionTime(Date.now())
+    // Legacy submission tracking removed - now using RateLimiter class
 
     try {
       // Check if email already exists
@@ -355,6 +382,30 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
     showToastMessage('Google signup feature coming soon!', 'error')
   }
 
+  const handleClose = useCallback(() => {
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: ''
+    })
+    setErrors({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: ''
+    })
+    setShowSuccess(false)
+    setIsSubmitting(false)
+    setPasswordStrength({ score: 0, feedback: [] })
+    setRememberForm(false)
+    onClose()
+  }, [onClose])
+
   // Focus management and accessibility
   useEffect(() => {
     if (isOpen) {
@@ -393,7 +444,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
       document.addEventListener('keydown', handleKeyDown)
       return () => document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isOpen])
+  }, [isOpen, handleClose])
 
   // Load saved form data on mount
   useEffect(() => {
@@ -406,31 +457,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
         console.error('Error loading saved form data:', error)
       }
     }
-  }, [])
-
-  const handleClose = () => {
-    setFormData({
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      password: '',
-      confirmPassword: ''
-    })
-    setErrors({
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      password: '',
-      confirmPassword: ''
-    })
-    setShowSuccess(false)
-    setIsSubmitting(false)
-    setPasswordStrength({ score: 0, feedback: [] })
-    setRememberForm(false)
-    onClose()
-  }
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -516,6 +543,9 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
             )}
 
             <form onSubmit={(e) => { e.preventDefault(); handleSignup(); }}>
+              {/* CSRF Token (hidden) */}
+              <input type="hidden" name="csrf_token" value={csrfToken} />
+              
               {/* Form Fields - Two Columns */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-4 mb-4">
                 {/* First Name */}

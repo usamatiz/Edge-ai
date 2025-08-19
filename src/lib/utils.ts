@@ -29,3 +29,16 @@ export function handleAnchorClick(href: string, onClose?: () => void) {
   }
   return false; // Indicates this was a regular link
 }
+
+// Re-export security utilities for easy access
+export {
+  sanitizeHtml,
+  sanitizeInput,
+  sanitizeUrl,
+  escapeHtml,
+  sanitizeFileName,
+  RateLimiter,
+  generateSecureRandomString,
+  sanitizeJsonInput,
+  CSRFProtection
+} from './security';
