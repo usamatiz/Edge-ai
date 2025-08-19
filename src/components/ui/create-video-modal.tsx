@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, AlertCircle } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import Image from 'next/image'
 
 interface CreateVideoModalProps {
@@ -231,7 +231,7 @@ export default function CreateVideoModal({ isOpen, onClose, videoTitle, startAtC
              <div className="space-y-6">        
 
                <p className='md:text-[20px] text-[16px] font-normal text-[#5F5F5F] absolute md:top-[65px] top-[58px] left-[30px]'>
-               It is also been sent on you eamil.
+               It has also been sent to your email.
                </p>
                {/* Video Preview */}
                <div className="relative mt-7 h-[420px] w-full aspect-video bg-gray-100 rounded-[8px] overflow-hidden">

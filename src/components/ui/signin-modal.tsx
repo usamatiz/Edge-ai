@@ -45,7 +45,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
   const [lastSubmissionTime, setLastSubmissionTime] = useState(0)
   
   // State to store registered users (this would come from your signup modal or API)
-  const [registeredUsers, setRegisteredUsers] = useState<UserData[]>([])
+  const [registeredUsers] = useState<UserData[]>([])
   
   // Toast state
   const [showToast, setShowToast] = useState(false)
@@ -202,7 +202,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
         handleClose()
       }, 2000)
 
-    } catch (error) {
+    } catch {
       showToastMessage('Something went wrong. Please try again.', 'error')
     } finally {
       setIsSubmitting(false)
@@ -312,7 +312,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
       <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
         <div 
           ref={modalRef}
-          className="bg-white rounded-[12px] md:px-[55px] px-4 pt-10 pb-10 max-w-[820px] w-full max-h-[615px] flex flex-col relative"
+          className="bg-white rounded-[12px] md:px-[55px] px-4 pt-10 pb-10 max-w-[820px] w-full md:max-h-[615px] max-h-[700px] flex flex-col relative"
           role="dialog"
           aria-modal="true"
           aria-labelledby="signin-modal-title"
@@ -436,7 +436,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
               </div>
 
               {/* Remember Me and Forgot Password */}
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-6 mt-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                     <div className="relative">
                     <input

@@ -87,7 +87,7 @@ interface CreateVideoFormProps {
 
 export default function CreateVideoForm({ className }: CreateVideoFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showSuccessToast, setShowSuccessToast] = useState(false)
+  const [showSuccessToast] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [formDataForModal, setFormDataForModal] = useState<CreateVideoFormData | null>(null)
@@ -125,7 +125,7 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
     }
   }
 
-  const handleDropdownSelect = (field: keyof CreateVideoFormData, value: string, label: string) => {
+  const handleDropdownSelect = (field: keyof CreateVideoFormData, value: string) => {
     setValue(field, value)
     trigger(field) // Trigger validation for this specific field
     setOpenDropdown(null)
@@ -187,7 +187,7 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
               <button
                 key={option.value}
                 type="button"
-                onClick={() => handleDropdownSelect(field, option.value, option.label)}
+                onClick={() => handleDropdownSelect(field, option.value)}
                 className="w-full px-4 py-3 text-left hover:bg-[#F5F5F5] transition-colors duration-200 flex items-center justify-between text-[#282828] cursor-pointer"
               >
                 <span>{option.label}</span>

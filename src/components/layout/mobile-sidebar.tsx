@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAVIGATION_ITEMS, BRAND_NAME, ANIMATIONS } from "@/lib/constants";
-import { cn, handleAnchorClick, smoothScrollTo } from "@/lib/utils";
+import { cn, handleAnchorClick } from "@/lib/utils";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { useActiveSection } from "@/hooks/use-active-section";
 import SignupModal from "@/components/ui/signup-modal";
@@ -83,9 +83,12 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const [isSignupModalOpen, setIsSignupModalOpen] = React.useState(false);
   const [isSigninModalOpen, setIsSigninModalOpen] = React.useState(false);
   
-  // Track active section based on scroll position
+  // Track active section based on scroll position (only on home page)
   const sectionIds = ['home', 'getting-started', 'how-it-works', 'benefits', 'pricing', 'faq', 'contact'];
   const activeSection = useActiveSection(sectionIds);
+  
+  // Check if we're on the home page
+  const isHomePage = pathname === '/';
   
   // Close sidebar when clicking outside
   React.useEffect(() => {
@@ -207,9 +210,9 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
               <div className="text-xs font-semibold text-[#5F5F5F] uppercase tracking-wider mb-4 px-2">
                 Navigation
               </div>
-                             {NAVIGATION_ITEMS.map((item, index) => {
-                 const sectionId = item.href.substring(1); // Remove the # from href
-                 const isActive = activeSection === sectionId;
+                                                           {NAVIGATION_ITEMS.map((item, index) => {
+                  const sectionId = item.href.substring(1); // Remove the # from href
+                  const isActive = isHomePage && activeSection === sectionId;
                  return (
                   <Link
                     key={item.label}
@@ -220,17 +223,22 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                         ? "bg-gradient-to-r from-[#5046E5] to-[#3A2DFD] text-white"
                         : "text-gray-700 hover:text-gray-900 hover:bg-gray-100/90"
                     )}
-                    onClick={(e) => {
-                      if (handleAnchorClick(item.href, onClose)) {
-                        e.preventDefault();
-                        trackNavigation(pathname, item.href, "click");
-                      } else {
-                        onClose();
-                        if (!isActive) {
-                          trackNavigation(pathname, item.href, "click");
-                        }
-                      }
-                    }}
+                                         onClick={(e) => {
+                       if (isHomePage) {
+                         // If we're on home page, handle smooth scrolling
+                         if (handleAnchorClick(item.href, onClose)) {
+                           e.preventDefault();
+                           trackNavigation(pathname, item.href, "click");
+                         }
+                       } else {
+                         // If we're on a different page, navigate to home page with hash
+                         e.preventDefault();
+                         onClose();
+                         const homeUrl = `/${item.href}`;
+                         trackNavigation(pathname, homeUrl, "click");
+                         window.location.href = homeUrl;
+                       }
+                     }}
                     aria-current={isActive ? "page" : undefined}
                     aria-label={`${item.label}${isActive ? " (current page)" : ""}`}
                     style={{
@@ -286,21 +294,6 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
             <div className="text-xs font-semibold text-[#5F5F5F] uppercase tracking-wider mb-4 px-2">
               Account
             </div>
-            
-            <Link
-              href="/login"
-              className="group cursor-pointer relative w-full inline-flex items-center justify-center px-6 py-4 text-base font-medium bg-white border border-gray-200 rounded-2xl hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 shadow-sm focus:outline-none"
-              onClick={() => {
-                onClose();
-                trackButtonClick("login", "mobile_sidebar", "navigate");
-              }}
-              aria-label="Log in to your account"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <span className="relative z-10 text-gray-700 group-hover:text-gray-900 font-semibold">
-                Log In
-              </span>
-            </Link>
             
             <div className="flex gap-3">
               <button

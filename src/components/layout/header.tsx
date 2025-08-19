@@ -43,9 +43,12 @@ export function Header() {
   const pathname = usePathname();
   const { trackNavigation, trackButtonClick } = useAnalytics();
   
-  // Track active section based on scroll position
+  // Track active section based on scroll position (only on home page)
   const sectionIds = ['home', 'getting-started', 'how-it-works', 'benefits', 'pricing', 'faq', 'contact'];
   const activeSection = useActiveSection(sectionIds);
+  
+  // Check if we're on the home page
+  const isHomePage = pathname === '/';
 
   // Throttled scroll handler for better performance
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -113,7 +116,7 @@ export function Header() {
             >
               {NAVIGATION_ITEMS.map((item) => {
                 const sectionId = item.href.substring(1); // Remove the # from href
-                const isActive = activeSection === sectionId;
+                const isActive = isHomePage && activeSection === sectionId;
                 return (
                   <Link
                     key={item.label}
@@ -127,11 +130,18 @@ export function Header() {
                     aria-current={isActive ? "page" : undefined}
                     aria-label={`${item.label}${isActive ? " (current page)" : ""}`}
                     onClick={(e) => {
-                      if (handleAnchorClick(item.href)) {
+                      if (isHomePage) {
+                        // If we're on home page, handle smooth scrolling
+                        if (handleAnchorClick(item.href)) {
+                          e.preventDefault();
+                          trackNavigation(pathname, item.href, "click");
+                        }
+                      } else {
+                        // If we're on a different page, navigate to home page with hash
                         e.preventDefault();
-                        trackNavigation(pathname, item.href, "click");
-                      } else if (!isActive) {
-                        trackNavigation(pathname, item.href, "click");
+                        const homeUrl = `/${item.href}`;
+                        trackNavigation(pathname, homeUrl, "click");
+                        window.location.href = homeUrl;
                       }
                     }}
                   >

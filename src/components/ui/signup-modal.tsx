@@ -342,7 +342,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
         handleClose()
       }, 2000)
 
-    } catch (error) {
+    } catch {
       showToastMessage('Something went wrong. Please try again.', 'error')
     } finally {
       setIsSubmitting(false)
