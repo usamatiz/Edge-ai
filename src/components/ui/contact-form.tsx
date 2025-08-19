@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { PiHeadsetBold } from "react-icons/pi"
-import { sanitizeInput, RateLimiter, CSRFProtection } from '@/lib/utils'
 
 // Zod validation schema
 const contactFormSchema = z.object({
@@ -21,15 +20,7 @@ type ContactFormData = z.infer<typeof contactFormSchema>
 export default function ContactForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   
-  // Security features
-  const rateLimiter = useRef(new RateLimiter(3, 300000)) // 3 contact requests per 5 minutes
-  const [csrfToken, setCsrfToken] = useState<string>('')
-  
-  useEffect(() => {
-    // Generate CSRF token when component mounts
-    const token = CSRFProtection.generateToken()
-    setCsrfToken(token)
-  }, [])
+
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
   const {
