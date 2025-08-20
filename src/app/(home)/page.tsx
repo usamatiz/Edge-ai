@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { SLIDER_ITEMS, REVIEW_SLIDER_ITEMS } from "@/lib/constants";
 import { Slider } from "@/components/ui/slider";
 import VideoCard from "@/components/ui/video-card";
@@ -12,8 +13,21 @@ import FAQSection from "@/components/ui/FAQsection";
 import { ReviewSlider } from "@/components/ui/review-slider";
 import { ProcessSteps } from "@/components/ui/process-steps";
 import PricingSection from "@/components/ui/pricing-section";
+import { smoothScrollTo } from "@/lib/utils";
 
 export default function HomePage() {
+  // Handle hash navigation when the page loads
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      // Small delay to ensure the page has fully loaded and all sections are rendered
+      setTimeout(() => {
+        const elementId = hash.substring(1);
+        smoothScrollTo(elementId);
+      }, 300);
+    }
+  }, []);
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -29,7 +43,7 @@ export default function HomePage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                href="/login"
+                href="/create-video"
                 className="inline-flex items-center justify-center px-[26.5px] py-[13.2px] text-base font-semibold bg-transparent border border-[#5046E5] text-[#5046E5] rounded-full hover:bg-gradient-to-r hover:from-[#5046E5] hover:to-[#3A2DFD] hover:text-white transition-all duration-300"
               >
                 Watch Demo

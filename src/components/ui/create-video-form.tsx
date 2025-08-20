@@ -35,13 +35,6 @@ const createVideoSchema = z.object({
   topicKeyPoints: z.string()
     .min(2, 'Topic key points must be at least 2 characters')
     .max(500, 'Topic key points must be less than 500 characters'),
-  zipCode: z.string()
-    .min(5, 'Zip code must be at least 5 characters')
-    .max(10, 'Zip code must be less than 10 characters')
-    .regex(/^[0-9-]+$/, 'Zip code can only contain numbers and hyphens'),
-  zipCodeKeyPoints: z.string()
-    .min(2, 'Zip code key points must be at least 2 characters')
-    .max(200, 'Zip code key points must be less than 200 characters'),
   city: z.string()
     .min(2, 'City must be at least 2 characters')
     .max(50, 'City must be less than 50 characters')
@@ -143,8 +136,6 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
         socialHandles: sanitizeInput(data.socialHandles, 'text'),
         videoTopic: sanitizeInput(data.videoTopic, 'text'),
         topicKeyPoints: sanitizeInput(data.topicKeyPoints, 'text'),
-        zipCode: sanitizeInput(data.zipCode, 'text'),
-        zipCodeKeyPoints: sanitizeInput(data.zipCodeKeyPoints, 'text'),
         city: sanitizeInput(data.city, 'name'),
         preferredTone: sanitizeInput(data.preferredTone, 'text'),
         callToAction: sanitizeInput(data.callToAction, 'text'),
@@ -327,7 +318,7 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
               <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Name <span className="text-red-500">*</span>
             </label>
-            {renderInput('name', 'Full Name', 'text', 'name')}
+            {renderInput('name', 'Preferred name for the video', 'text', 'name')}
           </div>
           
           <div>
@@ -344,59 +335,45 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Company Name <span className="text-red-500">*</span>
             </label>
-            {renderInput('companyName', 'The Licensed Name', 'text', 'organization')}
+            {renderInput('companyName', 'Your brokerage or company name', 'text', 'organization')}
           </div>
           
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               License <span className="text-red-500">*</span>
             </label>
-            {renderInput('license', 'Please Specify', 'text')}
+            {renderInput('license', 'Your real estate license number', 'text')}
           </div>
           
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Tailored Fit <span className="text-red-500">*</span>
             </label>
-            {renderInput('tailoredFit', 'Please Specify', 'text')}
+            {renderInput('tailoredFit', 'Your unique selling proposition or specialty', 'text')}
           </div>
           
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Social Handles <span className="text-red-500">*</span>
             </label>
-            {renderInput('socialHandles', 'Please Specify', 'text')}
+            {renderInput('socialHandles', '@username, @facebook, @instagram', 'text')}
           </div>
         </div>
 
         {/* Row 3 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Video Topic <span className="text-red-500">*</span>
             </label>
-            {renderInput('videoTopic', 'Please Specify', 'text')}
+            {renderInput('videoTopic', 'Market update, new listing, buyer tips, etc.', 'text')}
           </div>
           
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Topic Key Points <span className="text-red-500">*</span>
             </label>
-            {renderInput('topicKeyPoints', 'Please Specify', 'text')}
-          </div>
-          
-          <div>
-            <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
-              Zip Code <span className="text-red-500">*</span>
-            </label>
-            {renderInput('zipCode', 'Please Specify', 'text', 'postal-code')}
-          </div>
-          
-          <div>
-            <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
-              Zip Code Key Points <span className="text-red-500">*</span>
-            </label>
-            {renderInput('zipCodeKeyPoints', 'Please Specify', 'text')}
+            {renderInput('topicKeyPoints', 'Main points you want to highlight in the video', 'text')}
           </div>
         </div>
 
@@ -406,28 +383,28 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               City <span className="text-red-500">*</span>
             </label>
-            {renderInput('city', 'Please Specify', 'text', 'address-level2')}
+            {renderInput('city', 'Your primary market area or city', 'text', 'address-level2')}
           </div>
           
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Preferred Tone <span className="text-red-500">*</span>
             </label>
-            {renderInput('preferredTone', 'Please Specify', 'text')}
+            {renderInput('preferredTone', 'Professional, conversational, energetic', 'text')}
           </div>
           
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Call to Action <span className="text-red-500">*</span>
             </label>
-            {renderInput('callToAction', 'Please Specify', 'text')}
+            {renderInput('callToAction', 'Call me, visit my website, schedule consultation', 'text')}
           </div>
           
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Email <span className="text-red-500">*</span>
             </label>
-            {renderInput('email', 'Please Specify', 'email', 'email')}
+            {renderInput('email', 'your.email@example.com', 'email', 'email')}
           </div>
         </div>
 
