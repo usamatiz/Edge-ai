@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
+import SignupModal from "./signup-modal";
 
 
 interface FeatureItem {
@@ -26,7 +27,7 @@ const featureItems: FeatureItem[] = [
         
     ),
     title: "Attract Up to 40% More Leads",
-    description: "Agents using video marketing get up to 40% more qualified leads. With Edge, you win more attention, inquiries, and offers."
+    description: "Agents using video marketing generate up to 40% more qualified leads compared to those relying solely on photos or text. With Edge, you grab more attention, more inquiries—and more offers."
   },
   {
     id: "professional-camera",
@@ -38,7 +39,7 @@ const featureItems: FeatureItem[] = [
         
     ),
     title: "Professional Without a Camera",
-    description: "Camera-shy? No problem—Edge uses your AI avatar and voice to deliver polished videos without filming."
+    description: "Not comfortable on camera? No problem. Edge uses your AI avatar and voice to create clean, polished videos—no filming, no lighting, no retakes. Just your face, your message, and professional delivery."
   },
   {
     id: "win-listings",
@@ -55,7 +56,7 @@ const featureItems: FeatureItem[] = [
         </svg>        
     ),
     title: "Win More Listing Presentations",
-    description: "Wallets, exchanges, and NFT platforms Smart contract dev and audit"
+    description: "Showcase Edge during your next listing appointment and watch how sellers respond. Agents using AI video marketing report winning up to 35% more listings, simply by showing they're ahead of the curve."
   },
   {
     id: "sell-faster",
@@ -65,7 +66,7 @@ const featureItems: FeatureItem[] = [
         </svg>        
     ),
     title: "Sell Properties 30% Faster",
-    description: "Video listings get 4x more interest and sell 20-30% faster with Edge—more visibility means quicker closings and happier clients"
+    description: "Video listings attract 4x more interest than static ones (NAR), and homes marketed with Edge often sell 20–30% faster. More visibility = faster closings and happier clients."
   },
   {
     id: "stand-out",
@@ -76,11 +77,22 @@ const featureItems: FeatureItem[] = [
         
     ),
     title: "Stand Out in a Crowded Market",
-    description: "Stand out with Edge—avatars, music, captions & B-roll that beat old slideshows"
+    description: "Most agents are still using dated photo slideshows and Canva flyers. With Edge, your videos feature avatars, music, captions, and B-roll—making you the obvious choice in any market."
   }
 ];
 
 export function FeaturesSection({ className }: FeaturesSectionProps) {
+  const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
+
+  const handleSignupClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsSignupModalOpen(true);
+  };
+
+  const handleCloseSignupModal = () => {
+    setIsSignupModalOpen(false);
+  };
+
   return (
     <section className={cn("w-full py-16 md:py-24 bg-white", className)}>
       <div className="max-w-[1260px] mx-auto xl:px-0 px-3">
@@ -121,25 +133,27 @@ export function FeaturesSection({ className }: FeaturesSectionProps) {
           {/* Blue CTA Box as 6th item */}
           <div className="flex flex-col justify-between items-start bg-[#5046E5] rounded-[16px] p-6 text-white min-h-[230px]">
             <h3 className="text-[28px] md:text-[32px] font-semibold mb-6 text-left leading-tight">
-              Do you have idea
-              <br />
-              Let&apos;s Build it.
+              Get Started Today
             </h3>
             
-            <Link href="/login" className="group hover:bg-white border hover:border-[#6366f1] border-white text-white hover:text-[#6366f1] bg-transparent w-full py-[11.2px] rounded-full text-[14px] md:text-[16px] justify-center font-medium transition-all duration-300 flex items-center gap-2">
-              Learn More About Our Process
-              <svg 
-                className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            <button
+              onClick={handleSignupClick}
+              className="group hover:bg-white border hover:border-[#6366f1] border-white text-white hover:text-[#6366f1] bg-transparent px-4 w-full py-[11.2px] rounded-full text-[14px] md:text-[16px] justify-between font-normal cursor-pointer transition-all duration-300 flex items-center"
+            >
+              Sign up Now
+              <svg width="18" height="14" viewBox="0 0 18 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1 7.01097L16.8124 6.99999M11.5858 13L17 6.99999L11.5858 1" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-            </Link>
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Signup Modal */}
+      <SignupModal
+        isOpen={isSignupModalOpen}
+        onClose={handleCloseSignupModal}
+      />
     </section>
   );
 }

@@ -117,7 +117,7 @@ export default function CreateVideoModal({ isOpen, onClose, videoTitle, startAtC
           <h3 className="md:text-[32px] text-[24px] font-semibold text-[#282828]">
             {currentStep === 'form' && 'Create new video'}
             {currentStep === 'loading' && 'Creating a new video'}
-            {currentStep === 'complete' && 'Your video is Rendered'}
+            {currentStep === 'complete' && `${videoData ? `${videoData.title}` : 'Your video is Rendered'}`}
           </h3>
           <button
             onClick={handleClose}
@@ -229,13 +229,10 @@ export default function CreateVideoModal({ isOpen, onClose, videoTitle, startAtC
                      {/* Step 3: Complete */}
            {currentStep === 'complete' && (
              <div className="space-y-6">        
-
-               <p className='md:text-[20px] text-[16px] font-normal text-[#5F5F5F] absolute md:top-[65px] top-[58px] left-[30px]'>
-               It has also been sent to your email.
-               </p>
-               {/* Video Preview */}
-               <div className="relative mt-7 h-[420px] w-full aspect-video bg-gray-100 rounded-[8px] overflow-hidden">
                  {videoData ? (
+                  <>
+                    {/* Video Preview */}
+                    <div className="relative mt-7 h-[420px] w-full aspect-video bg-gray-100 rounded-[8px] overflow-hidden">
                    <iframe
                      src={getYouTubeEmbedUrl(videoData.youtubeUrl)}
                      title={videoData.title}
@@ -244,12 +241,21 @@ export default function CreateVideoModal({ isOpen, onClose, videoTitle, startAtC
                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                      allowFullScreen
                    />
+                   </div>
+                   </>
                  ) : (
+                  <>
+                  <p className='md:text-[20px] text-[16px] font-normal text-[#5F5F5F] absolute md:top-[65px] top-[58px] left-[30px]'>
+                  It has also been sent to your email.
+                  </p>
+                  {/* Video Preview */}
+                  <div className="relative mt-7 h-[420px] w-full aspect-video bg-gray-100 rounded-[8px] overflow-hidden">
                    <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
                      <Image src="/images/modal-image.png" alt="Video Preview" width={1000} height={1000} className='w-full h-full object-cover' />
                    </div>
+                   </div>
+                   </>
                  )}
-               </div>
               
               <button
                 onClick={handleDownload}

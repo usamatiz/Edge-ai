@@ -1,7 +1,6 @@
 export const BRAND_NAME = "EdgeAIRealty";
 
 export const NAVIGATION_ITEMS = [
-  { label: "Home", href: "#home" },
   { label: "Getting Started", href: "#getting-started" },
   { label: "How it works", href: "#how-it-works" },
   { label: "Benefits", href: "#benefits" },

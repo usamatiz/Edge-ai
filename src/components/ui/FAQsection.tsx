@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, Info, Heart, Users, MessageCircle, Calendar, Minus, CreditCard, Shield, Settings, HelpCircle, Zap, Lock, Clock } from 'lucide-react';
+import { Info, MessageCircle, Minus, Shield, Settings, HelpCircle, Play, Layers, UserCheck, Headphones, DollarSign, RefreshCw, Download, Edit, FileText, Video, Smartphone, Plus } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 
 interface FAQItem {
@@ -15,7 +15,7 @@ interface FAQData {
 
 const FAQSection = () => {
   const [activeTab, setActiveTab] = useState('Series & Videos');
-  const [openAccordion, setOpenAccordion] = useState<string | null>('What is Edge Ai Realty?');
+  const [openAccordion, setOpenAccordion] = useState<string | null>('what-is-edge-ai-realty');
 
   const tabs = [
     'Series & Videos',
@@ -27,113 +27,113 @@ const FAQSection = () => {
   const faqData: FAQData = {
     'Series & Videos': [
       {
-        id: 'What is Edge Ai Realty?',
+        id: 'what-is-edge-ai-realty',
         question: 'What is Edge Ai Realty?',
-        answer: 'Edge Ai Realty is a cutting-edge platform that empowers real estate professionals to create high-quality, customized AI-generated videos for property listings, market updates, and personal branding. Our goal is to streamline your marketing efforts, saving you time and enhancing your online presence.',
+        answer: 'Edge Ai Realty is a cutting-edge platform that empowers real estate professionals to create high-quality, customized Ai-generated videos for property listings, market updates, and personal branding. Our goal is to streamline your marketing efforts, saving you time and enhancing your online presence.',
         icon: Info
       },
       {
-        id: 'subscription-plans',
+        id: 'subscription-plan-differences',
         question: 'What are the differences between the subscription plans?',
-        answer: 'Our subscription plans vary in features and video generation limits. Higher tiers include more advanced AI features, priority processing, and additional customization options.',
-        icon: Heart
+        answer: 'Starter ($99 one-time): Includes one Ai-generated video and one avatar. Ideal for trying out our service. Growth ($199/month): Offers four Ai-generated videos per month with one avatar. Suitable for regular content creation. Pro ($399/month): Provides 12 Ai-generated videos per month with one avatar and includes a quarterly 30-minute strategy session. Designed for serious marketers. Enterprise ($799+/month): Delivers 25+ Ai-generated videos per month with up to three avatars, advanced customization, and a quarterly strategy session. Tailored for large teams and brokerages.',
+        icon: Layers
       },
       {
-        id: 'multiple-avatars',
+        id: 'multiple-avatars-availability',
         question: 'Can I use multiple avatars in my videos?',
-        answer: 'Yes, depending on your subscription plan, you can create and use multiple AI avatars to diversify your video content and match different marketing needs.',
-        icon: Users
+        answer: 'Multiple avatars are available exclusively in our Enterprise plan, which includes up to three avatars. Our Starter, Growth, and Pro plans include one avatar.',
+        icon: UserCheck
       },
       {
-        id: 'quarterly-session',
+        id: 'quarterly-strategy-session',
         question: 'What is included in the quarterly strategy session?',
-        answer: 'The quarterly strategy session includes personalized consultation on video marketing strategies, content planning, and optimization tips to maximize your ROI.',
+        answer: 'The quarterly strategy session is a 30-minute call with our team to discuss your marketing goals, review past video performance, and plan future content strategies. This session is included in the Pro and Enterprise plans.',
         icon: MessageCircle
       },
       {
-        id: 'more-videos',
+        id: 'how-to-get-started',
+        question: 'How do I get started?',
+        answer: 'Choose the plan that best fits your needs and complete the sign-up process on our website. You\'ll then go through our onboarding process to set up your avatar and provide information for your first video.',
+        icon: Play
+      },
+      {
+        id: 'need-more-videos',
         question: 'What if I need more videos than my plan offers?',
-        answer: 'You can either upgrade your plan or purchase additional video credits as add-ons. Contact our support team to discuss the best option for your needs.',
-        icon: Calendar
-      }
+        answer: 'If you require additional videos beyond your plan\'s allocation, please contact our sales team to discuss custom solutions or upgrading to a higher-tier plan.',
+        icon: Video
+      },
+      {
+        id: 'contract-cancellation-policy',
+        question: 'Is there a contract or can I cancel anytime?',
+        answer: 'Our Starter plan is a one-time purchase. The Growth, Pro, and Enterprise plans are monthly subscriptions with no long-term contracts. You can cancel anytime before your next billing cycle.',
+        icon: RefreshCw
+      },
+      {
+        id: 'support-options',
+        question: 'What kind of support do you offer?',
+        answer: 'Starter Plan: Email support with a 24–48 hour response time. Growth Plan: Priority email support with responses within 24 hours. Pro and Enterprise Plans: Priority email support with responses within 12 hours, plus quarterly strategy sessions.',
+        icon: Headphones
+      },
+      {
+        id: 'plan-upgrade-downgrade',
+        question: 'Can I upgrade or downgrade my plan?',
+        answer: 'Yes, you can change your subscription plan at any time through your account settings or by contacting our support team. Changes will take effect in the next billing cycle.',
+        icon: Settings
+      },
     ],
     'Billing': [
       {
-        id: 'payment-methods',
-        question: 'What payment methods do you accept?',
-        answer: 'We accept all major credit cards (Visa, MasterCard, American Express), PayPal, and bank transfers for annual plans. All payments are processed securely through our payment partners.',
-        icon: CreditCard
+        id: 'manage-subscription',
+        question: 'How do I manage my subscription?',
+        answer: 'You can update or cancel your plan anytime from your account dashboard or by emailing our support team.',
+        icon: Settings
       },
       {
-        id: 'billing-cycle',
-        question: 'When will I be charged for my subscription?',
-        answer: 'You will be charged immediately upon subscription activation. For monthly plans, you will be charged on the same date each month. For annual plans, you will be charged once per year on your subscription anniversary.',
-        icon: Calendar
+        id: 'when-am-i-billed',
+        question: 'When am I billed?',
+        answer: 'All subscriptions are billed monthly on the date of your original sign-up.',
+        icon: DollarSign
       },
       {
-        id: 'refund-policy',
-        question: 'What is your refund policy?',
-        answer: 'We offer a 30-day money-back guarantee for new subscribers. If you are not satisfied with our service within the first 30 days, you can request a full refund. Refunds are processed within 5-7 business days.',
+        id: 'cancel-anytime',
+        question: 'Can I cancel anytime?',
+        answer: 'Yes. You\'ll retain access to your plan until the end of your billing period — no penalties or surprise fees.',
         icon: Shield
       },
-      {
-        id: 'upgrade-downgrade',
-        question: 'Can I upgrade or downgrade my plan?',
-        answer: 'Yes, you can upgrade your plan at any time and the new features will be available immediately. For downgrades, changes will take effect at the next billing cycle. Prorated credits may apply for upgrades.',
-        icon: Settings
-      }
     ],
     'Account': [
       {
-        id: 'account-setup',
-        question: 'How do I set up my account?',
-        answer: 'Setting up your account is simple. After registration, you will receive a welcome email with setup instructions. You can then customize your profile, upload your branding materials, and start creating your first AI video.',
-        icon: Users
+        id: 'access-my-videos',
+        question: 'How do I access my videos?',
+        answer: 'Once your videos are ready, you\'ll get an email notification with a download link and social-ready formats.',
+        icon: Download
       },
       {
-        id: 'password-reset',
-        question: 'How do I reset my password?',
-        answer: 'Click on the "Forgot Password" link on the login page. Enter your email address and we will send you a secure link to reset your password. The link expires after 24 hours for security.',
-        icon: Lock
+        id: 'update-avatar-branding',
+        question: 'Can I update my avatar or branding later?',
+        answer: 'Yes — you can request changes anytime. Growth and Pro plans allow moderate edits; Enterprise plans get full brand flexibility.',
+        icon: Edit
       },
-      {
-        id: 'profile-customization',
-        question: 'Can I customize my profile and branding?',
-        answer: 'Yes, you can fully customize your profile with your company logo, colors, and branding elements. These will be automatically applied to all videos you create, ensuring consistent brand representation.',
-        icon: Settings
-      },
-      {
-        id: 'team-members',
-        question: 'Can I add team members to my account?',
-        answer: 'Yes, depending on your subscription plan, you can add team members with different permission levels. Team members can collaborate on video projects while maintaining your brand consistency.',
-        icon: Users
-      }
     ],
     'Technical': [
       {
-        id: 'video-quality',
-        question: 'What video quality and formats are supported?',
-        answer: 'We support HD (1080p) and 4K video quality. Videos are exported in MP4 format, which is compatible with all major platforms including social media, websites, and email marketing tools.',
-        icon: Zap
-      },
-      {
-        id: 'ai-technology',
-        question: 'What AI technology powers your video generation?',
-        answer: 'Our platform uses advanced AI models including natural language processing, computer vision, and voice synthesis. We continuously update our technology to ensure the highest quality and most realistic results.',
+        id: 'video-file-issues',
+        question: 'What if I have issues with my video or files?',
+        answer: 'Just email us — we\'ll resolve most issues within 24 hours. Pro and Enterprise users get response priority.',
         icon: HelpCircle
       },
       {
-        id: 'processing-time',
-        question: 'How long does it take to generate a video?',
-        answer: 'Video generation typically takes 2-5 minutes depending on length and complexity. Premium subscribers get priority processing with faster generation times. You will receive an email notification when your video is ready.',
-        icon: Clock
+        id: 'special-software-needed',
+        question: 'Do I need special software to use the videos?',
+        answer: 'Nope. All videos are delivered in standard MP4 formats, ready for upload to Instagram, YouTube, TikTok, and more.',
+        icon: Smartphone
       },
       {
-        id: 'data-security',
-        question: 'How secure is my data and content?',
-        answer: 'We take data security seriously. All content is encrypted in transit and at rest. We use industry-standard security protocols and never share your data with third parties. Your videos and account information are protected.',
-        icon: Shield
-      }
+        id: 'preview-scripts-changes',
+        question: 'Can I preview scripts or request changes?',
+        answer: 'Yes. All plans include some level of script customization. Pro and Enterprise plans come with optimization and review built-in.',
+        icon: FileText
+      },
     ]
   };
 
@@ -240,8 +240,8 @@ const FAQSection = () => {
                       aria-hidden="true"
                     />
                   ) : (
-                      <ChevronDown
-                        className="w-5 h-5 sm:w-6 hidden sm:h-6 lg:w-[28px] lg:h-[28px] transition-all duration-300"
+                      <Plus
+                        className="w-5 h-5 sm:w-6 sm:h-6 lg:w-[28px] lg:h-[28px] transition-all duration-300"
                         style={{ color: '#A0A3BD' }}
                         aria-hidden="true"
                       />

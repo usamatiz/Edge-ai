@@ -29,6 +29,8 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-barlow: var(--font-barlow), sans-serif;
+  --font-quicksand: var(--font-quicksand), sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", monospace;
 }
 
@@ -157,6 +159,10 @@ html {
    background: conic-gradient(#0000 10%,#5046E5);
    -webkit-mask: radial-gradient(farthest-side,#0000 calc(100% - 22px),#000 0);
    animation: spinner-zp9dbg 1s infinite linear;
+}
+
+#contact {
+  display: block !important;
 }
 
 @keyframes spinner-zp9dbg {

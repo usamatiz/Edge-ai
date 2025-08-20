@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react'
 import { sanitizeInput, RateLimiter, CSRFProtection } from '@/lib/utils'
+import { useAuth, type UserData } from '@/contexts/AuthContext'
 
 interface SignupModalProps {
   isOpen: boolean
@@ -34,15 +35,12 @@ interface PasswordStrength {
   feedback: string[]
 }
 
-interface UserData {
-  firstName: string
-  lastName: string
-  email: string
-  phone: string
-  createdAt: string
-}
+
 
 export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupModalProps) {
+  // Use shared auth context
+  const { addUserAndLogin, isUserRegistered } = useAuth()
+  
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
     lastName: '',
@@ -65,12 +63,6 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
   const [showSuccess, setShowSuccess] = useState(false)
   const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>({ score: 0, feedback: [] })
   const [rememberForm, setRememberForm] = useState(false)
-  // Legacy submission tracking (now using RateLimiter class)
-  // const [submissionCount, setSubmissionCount] = useState(0)
-  // const [lastSubmissionTime, setLastSubmissionTime] = useState(0)
-  
-  // State to store registered users
-  const [registeredUsers, setRegisteredUsers] = useState<UserData[]>([])
   
   // Toast state
   const [showToast, setShowToast] = useState(false)
@@ -198,12 +190,12 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
       [field]: processedValue
     }))
     
-    // Real-time password strength check
+    // Real-time password strength check (keep this for better UX)
     if (field === 'password') {
       setPasswordStrength(checkPasswordStrength(processedValue))
     }
     
-    // Clear error when user starts typing
+    // Clear error when user starts typing (keep this for better UX)
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
@@ -212,66 +204,9 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
     }
   }
 
-  const handleInputBlur = (field: keyof FormData) => {
-    // Validate on blur
-    validateField(field, formData[field])
-  }
-
-  const validateField = (field: keyof FormData, value: string) => {
-    const newErrors = { ...errors }
-
-    switch (field) {
-      case 'firstName':
-        if (!value.trim()) {
-          newErrors.firstName = 'First Name is required'
-        } else if (value.length < 2) {
-          newErrors.firstName = 'First Name must be at least 2 characters'
-        } else if (!/^[a-zA-Z\s]+$/.test(value)) {
-          newErrors.firstName = 'First Name can only contain letters and spaces'
-        }
-        break
-      case 'lastName':
-        if (!value.trim()) {
-          newErrors.lastName = 'Last Name is required'
-        } else if (value.length < 2) {
-          newErrors.lastName = 'Last Name must be at least 2 characters'
-        } else if (!/^[a-zA-Z\s]+$/.test(value)) {
-          newErrors.lastName = 'Last Name can only contain letters and spaces'
-        }
-        break
-      case 'email':
-        if (!value.trim()) {
-          newErrors.email = 'Email is required'
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-          newErrors.email = 'Please enter a valid email address'
-        }
-        break
-      case 'phone':
-        if (!value.trim()) {
-          newErrors.phone = 'Phone is required'
-        } else if (value.replace(/\D/g, '').length < 10) {
-          newErrors.phone = 'Please enter a valid phone number'
-        }
-        break
-      case 'password':
-        if (!value.trim()) {
-          newErrors.password = 'Password is required'
-        } else if (value.length < 8) {
-          newErrors.password = 'Password must be at least 8 characters'
-        } else if (passwordStrength.score < 3) {
-          newErrors.password = 'Password is too weak. Please include uppercase, lowercase, numbers, and special characters'
-        }
-        break
-      case 'confirmPassword':
-        if (!value.trim()) {
-          newErrors.confirmPassword = 'Confirm Password is required'
-        } else if (value !== formData.password) {
-          newErrors.confirmPassword = 'Passwords do not match'
-        }
-        break
-    }
-
-    setErrors(newErrors)
+  // Remove blur validation - validation only happens on submit
+  const handleInputBlur = () => {
+    // No validation on blur - only on submit
   }
 
   const validateForm = () => {
@@ -284,9 +219,60 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
       confirmPassword: ''
     }
 
-    // Validate each field using the enhanced validation
-    const fields: (keyof FormData)[] = ['firstName', 'lastName', 'email', 'phone', 'password', 'confirmPassword']
-    fields.forEach(field => validateField(field, formData[field]))
+    // Validate each field and collect errors
+    Object.entries(formData).forEach(([key, value]) => {
+      const field = key as keyof FormData
+      switch (field) {
+        case 'firstName':
+          if (!value.trim()) {
+            newErrors.firstName = 'First Name is required'
+          } else if (value.length < 2) {
+            newErrors.firstName = 'First Name must be at least 2 characters'
+          } else if (!/^[a-zA-Z\s]+$/.test(value)) {
+            newErrors.firstName = 'First Name can only contain letters and spaces'
+          }
+          break
+        case 'lastName':
+          if (!value.trim()) {
+            newErrors.lastName = 'Last Name is required'
+          } else if (value.length < 2) {
+            newErrors.lastName = 'Last Name must be at least 2 characters'
+          } else if (!/^[a-zA-Z\s]+$/.test(value)) {
+            newErrors.lastName = 'Last Name can only contain letters and spaces'
+          }
+          break
+        case 'email':
+          if (!value.trim()) {
+            newErrors.email = 'Email is required'
+          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+            newErrors.email = 'Please enter a valid email address'
+          }
+          break
+        case 'phone':
+          if (!value.trim()) {
+            newErrors.phone = 'Phone is required'
+          } else if (value.replace(/\D/g, '').length < 10) {
+            newErrors.phone = 'Please enter a valid phone number'
+          }
+          break
+        case 'password':
+          if (!value.trim()) {
+            newErrors.password = 'Password is required'
+          } else if (value.length < 8) {
+            newErrors.password = 'Password must be at least 8 characters'
+          } else if (passwordStrength.score < 3) {
+            newErrors.password = 'Password is too weak. Please include uppercase, lowercase, numbers, and special characters'
+          }
+          break
+        case 'confirmPassword':
+          if (!value.trim()) {
+            newErrors.confirmPassword = 'Confirm Password is required'
+          } else if (value !== formData.password) {
+            newErrors.confirmPassword = 'Passwords do not match'
+          }
+          break
+      }
+    })
 
     // Set the errors
     setErrors(newErrors)
@@ -327,10 +313,8 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
     // Legacy submission tracking removed - now using RateLimiter class
 
     try {
-      // Check if email already exists
-      const emailExists = registeredUsers.some(user => user.email.toLowerCase() === formData.email.toLowerCase())
-      
-      if (emailExists) {
+      // Check if email already exists using shared context
+      if (isUserRegistered(formData.email)) {
         showToastMessage('An account with this email already exists.', 'error')
         return
       }
@@ -347,12 +331,16 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
         createdAt: new Date().toISOString()
       }
 
-      // Save to state
-      setRegisteredUsers(prev => [...prev, newUser])
+      // Save to shared context and log the user in atomically
+      addUserAndLogin(newUser)
       
-      // Show success message
-      setShowSuccess(true)
+      // Show success toast and close modal
       showToastMessage('Account created successfully! Welcome to EdgeAi.', 'success')
+      
+      // Close modal immediately after successful signup
+      setTimeout(() => {
+        onClose()
+      }, 100)
       
       // Save form data if "remember form" is checked
       if (rememberForm) {
@@ -524,7 +512,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
           <div className="flex items-center justify-between flex-shrink-0">
             <div className="flex-1">
               <h3 id="signup-modal-title" className="md:text-[48px] text-[25px] font-semibold text-[#282828] text-center">
-                Welcome Back to <span className="text-[#5046E5]">EdgeAi</span>
+                Welcome to <span className="text-[#5046E5]">EdgeAi</span>
               </h3>
               <p id="signup-modal-description" className="text-[#667085] text-[16px] text-center mt-2">
                 Please enter your details to create your <br className="hidden md:block" /> account and make videos seamlessly.
@@ -559,7 +547,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
                     type="text"
                     value={formData.firstName}
                     onChange={(e) => handleInputChange('firstName', e.target.value)}
-                    onBlur={() => handleInputBlur('firstName')}
+                    onBlur={handleInputBlur}
                     placeholder="Enter First Name"
                     aria-describedby={errors.firstName ? 'firstName-error' : undefined}
                     aria-invalid={!!errors.firstName}
@@ -585,7 +573,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
                     type="text"
                     value={formData.lastName}
                     onChange={(e) => handleInputChange('lastName', e.target.value)}
-                    onBlur={() => handleInputBlur('lastName')}
+                    onBlur={handleInputBlur}
                     placeholder="Enter Last Name"
                     aria-describedby={errors.lastName ? 'lastName-error' : undefined}
                     aria-invalid={!!errors.lastName}
@@ -610,7 +598,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    onBlur={() => handleInputBlur('email')}
+                    onBlur={handleInputBlur}
                     placeholder="Enter Email"
                     className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
                       errors.email ? 'ring-2 ring-red-500' : ''
@@ -630,7 +618,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => handleInputChange('phone', e.target.value)}
-                    onBlur={() => handleInputBlur('phone')}
+                    onBlur={handleInputBlur}
                     placeholder="Enter Phone"
                     className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
                       errors.phone ? 'ring-2 ring-red-500' : ''
@@ -652,7 +640,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
                       type={showPassword ? 'text' : 'password'}
                       value={formData.password}
                       onChange={(e) => handleInputChange('password', e.target.value)}
-                      onBlur={() => handleInputBlur('password')}
+                      onBlur={handleInputBlur}
                       placeholder="**********"
                       aria-describedby={errors.password ? 'password-error' : 'password-strength'}
                       aria-invalid={!!errors.password}
@@ -723,7 +711,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
                       type={showConfirmPassword ? 'text' : 'password'}
                       value={formData.confirmPassword}
                       onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                      onBlur={() => handleInputBlur('confirmPassword')}
+                      onBlur={handleInputBlur}
                       placeholder="**********"
                       className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white pr-12 ${
                         errors.confirmPassword ? 'ring-2 ring-red-500' : ''

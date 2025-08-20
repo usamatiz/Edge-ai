@@ -191,12 +191,12 @@ export default function ContactForm() {
                   type="button"
                   className="py-[11.2px] md:max-w-[303px] max-w-full w-full bg-transparent border-2 border-[#5046E5] text-[#5046E5] rounded-full font-semibold text-[20px] leading-[32px] hover:bg-[#5046E5] hover:text-white transition-all duration-300 focus:outline-none cursor-pointer"
                 >
-                  Email Respond Prefeed
+                  Email Response Preferred
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-8 py-[11.2px] md:max-w-[218px] max-w-full w-full bg-[#5046E5] text-white rounded-full font-semibold text-[20px] leading-[32px] hover:bg-transparent hover:text-[#5046E5] border-2 border-[#5046E5] transition-all duration-300 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="px-8 py-[11.2px] md:max-w-[218px] max-w-full w-full bg-[#5046E5] text-white rounded-full font-semibold text-[20px] leading-[32px] hover:bg-transparent hover:text-[#5046E5] border-2 border-[#5046E5] transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#5046E5] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isSubmitting ? 'Sending...' : 'Request a Call'}
                 </button>

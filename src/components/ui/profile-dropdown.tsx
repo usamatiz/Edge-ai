@@ -1,0 +1,187 @@
+'use client'
+
+import { useState, useRef, useEffect } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { cn } from '@/lib/utils'
+import Link from 'next/link'
+
+interface ProfileDropdownProps {
+  isMobile?: boolean
+  onClose?: () => void
+}
+
+export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDropdownProps) {
+  const { currentUser, logout } = useAuth()
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false)
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        setIsOpen(false)
+        buttonRef.current?.focus()
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape)
+      return () => document.removeEventListener('keydown', handleEscape)
+    }
+  }, [isOpen])
+
+  const handleLogout = () => {
+    logout()
+    setIsOpen(false)
+    if (onClose) onClose()
+  }
+
+  const toggleDropdown = () => {
+    setIsOpen(!isOpen)
+  }
+
+  if (!currentUser) return null
+
+  const menuItems = [
+    {
+      label: 'Account',
+      href: '/account',
+      isLogout: false
+    },
+    {
+      label: 'My Videos',
+      href: '/create-video',
+      isLogout: false
+    },
+    {
+      label: 'Logout',
+      href: '#',
+      isLogout: true
+    }
+  ]
+
+  return (
+    <div className={cn("relative", isMobile ? "w-full" : "")}>
+      {/* Profile Button */}
+      <button
+        ref={buttonRef}
+        onClick={toggleDropdown}
+        className={cn(
+          "flex items-center justify-center w-[128px] cursor-pointer gap-2 px-2 py-[7.4px] rounded-full border-2 border-[#5F5F5F] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5046E5] focus-visible:ring-offset-2",
+          isMobile
+            ? "w-full justify-between bg-gray-100 hover:bg-gray-200 px-4 py-3"
+            : "hover:bg-gray-100 border-2 border-[#5F5F5F] hover:border-gray-300"
+        )}
+        aria-label={`Profile menu for ${currentUser.firstName} ${currentUser.lastName}`}
+        aria-expanded={isOpen}
+        aria-haspopup="true"
+      >
+        
+        {/* Name (desktop) or full info (mobile) */}
+        <div className={cn("flex items-center gap-2", isMobile ? "flex-1" : "")}>
+          <span className={cn(
+            "font-medium text-[#5F5F5F]",
+            isMobile ? "text-[20px]" : "text-[20px] hidden lg:block"
+          )}>
+            {isMobile 
+              ? `${currentUser.firstName} ${currentUser.lastName}`
+              : currentUser.firstName
+            }
+          </span>
+          <svg width="18" height="9" className={cn(
+            "transition-transform duration-200",
+            isOpen ? "rotate-180" : ""
+          )} viewBox="0 0 18 9" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 0L9 9L18 0H0Z" fill="#5F5F5F"/>
+          </svg>
+
+        </div>
+      </button>
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div
+          ref={dropdownRef}
+          className={cn(
+            "absolute z-[9999] bg-white rounded-[12px] shadow-xl border border-gray-200 p-2 min-w-[200px]",
+            isMobile 
+              ? "top-full left-0 right-0 mt-2" 
+              : "top-full right-0 mt-2"
+          )}
+          role="menu"
+          aria-label="Profile menu"
+          style={{
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+          }}
+        >
+
+          {/* Menu Items */}
+          <div className="">
+            {menuItems.map((item) => {
+              if (item.isLogout) {
+                // Render logout as a button styled as a link with border above
+                return (
+                  <div key={item.label}>
+                    <div className="border-b border-[#A0A3BD] mx-2 my-2"></div>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault()
+                        handleLogout()
+                      }}
+                      className={cn(
+                        "w-full flex items-center cursor-pointer gap-3 rounded-[8px] px-4 py-3 text-[16px] font-medium transition-colors duration-150 focus:outline-none focus:bg-gray-100 text-left",
+                        "text-[#374151] hover:bg-gray-100 hover:text-[#111827]"
+                      )}
+                      role="menuitem"
+                    >
+                      <span>{item.label}</span>
+                    </button>
+                  </div>
+                )
+              }
+              
+              // Render navigation items as Links
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => {
+                    setIsOpen(false)
+                    if (onClose) onClose()
+                  }}
+                  className={cn(
+                    "w-full flex items-center cursor-pointer gap-3 rounded-[8px] px-4 py-3 text-[16px] font-medium transition-colors duration-150 focus:outline-none focus:bg-gray-100",
+                    "text-[#374151] hover:bg-gray-100 hover:text-[#111827]"
+                  )}
+                  role="menuitem"
+                >
+                  <span>{item.label}</span>
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

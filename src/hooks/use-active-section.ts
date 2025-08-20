@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 export function useActiveSection(sectionIds: string[], offset: number = 100) {
-  const [activeSection, setActiveSection] = useState<string>('');
+  const [activeSection, setActiveSection] = useState<string>('getting-started');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -45,9 +45,9 @@ export function useActiveSection(sectionIds: string[], offset: number = 100) {
         currentSection = closestSection;
       }
       
-      // If we're at the very top, set home as active
+      // If we're at the very top, set getting-started as active
       if (scrollPosition < 200) {
-        currentSection = 'home';
+        currentSection = 'getting-started';
       }
       
       setActiveSection(currentSection);
