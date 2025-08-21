@@ -113,12 +113,13 @@ export default function CreateVideoModal({ isOpen, onClose, videoTitle, startAtC
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-[12px] max-w-[1260px] w-full max-h-[90vh] flex flex-col relative">
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-6 py-4 flex-shrink-0">
+        <div className="flex items-center justify-between px-6 pt-4 flex-shrink-0">
           <h3 className="md:text-[32px] text-[24px] font-semibold text-[#282828]">
             {currentStep === 'form' && 'Create new video'}
             {currentStep === 'loading' && 'Creating a new video'}
             {currentStep === 'complete' && `${videoData ? `${videoData.title}` : 'Your video is Rendered'}`}
           </h3>
+
           <button
             onClick={handleClose}
             className="cursor-pointer"
@@ -128,6 +129,11 @@ export default function CreateVideoModal({ isOpen, onClose, videoTitle, startAtC
             </svg>
           </button>
         </div>
+        {currentStep === 'complete' && !videoData && (
+            <p className='md:text-[20px] text-[16px] font-normal text-[#5F5F5F] pl-6'>
+            It has also been sent to your email.
+            </p>
+          )}
 
         {/* Modal Content */}
         <div className="px-6 pt-2 pb-6 overflow-y-auto flex-1">
@@ -143,8 +149,8 @@ export default function CreateVideoModal({ isOpen, onClose, videoTitle, startAtC
                      value={formData.prompt}
                      onChange={(e) => handleInputChange('prompt', e.target.value)}
                      onBlur={() => handleInputBlur('prompt')}
-                     placeholder="Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electr"
-                     className={`w-full h-[371px] px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] resize-none focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
+                     placeholder="Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to"
+                     className={`w-full md:h-[371px] h-[200px] px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] resize-none focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
                        errors.prompt ? 'ring-2 ring-red-500' : ''
                      }`}
                    />
@@ -164,8 +170,8 @@ export default function CreateVideoModal({ isOpen, onClose, videoTitle, startAtC
                      value={formData.description}
                      onChange={(e) => handleInputChange('description', e.target.value)}
                      onBlur={() => handleInputBlur('description')}
-                     placeholder="Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electr"
-                     className={`w-full h-[371px] px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] resize-none focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
+                     placeholder="Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to"
+                     className={`w-full md:h-[371px] h-[200px] px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] resize-none focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
                        errors.description ? 'ring-2 ring-red-500' : ''
                      }`}
                    />
@@ -185,8 +191,8 @@ export default function CreateVideoModal({ isOpen, onClose, videoTitle, startAtC
                      value={formData.conclusion}
                      onChange={(e) => handleInputChange('conclusion', e.target.value)}
                      onBlur={() => handleInputBlur('conclusion')}
-                     placeholder="Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electr"
-                     className={`w-full h-[371px] px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] resize-none focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
+                     placeholder="Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to"
+                     className={`w-full md:h-[371px] h-[200px] px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] resize-none focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
                        errors.conclusion ? 'ring-2 ring-red-500' : ''
                      }`}
                    />
@@ -245,9 +251,7 @@ export default function CreateVideoModal({ isOpen, onClose, videoTitle, startAtC
                    </>
                  ) : (
                   <>
-                  <p className='md:text-[20px] text-[16px] font-normal text-[#5F5F5F] absolute md:top-[65px] top-[58px] left-[30px]'>
-                  It has also been sent to your email.
-                  </p>
+                  
                   {/* Video Preview */}
                   <div className="relative mt-7 h-[420px] w-full aspect-video bg-gray-100 rounded-[8px] overflow-hidden">
                    <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
