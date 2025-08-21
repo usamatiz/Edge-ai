@@ -144,7 +144,7 @@ const FAQSection = () => {
   };
 
   return (
-    <section className="max-w-[1260px] mx-auto px-3 py-12 sm:py-16 lg:py-20" aria-labelledby="faq-heading">
+    <section className="max-w-[1260px] mx-auto px-3 py-4 lg:py-10" aria-labelledby="faq-heading">
       {/* Header */}
       <div className="text-center mb-8 sm:mb-12 lg:mb-16">
         <h1 

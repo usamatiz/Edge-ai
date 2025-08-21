@@ -37,7 +37,7 @@ export function Slider({
   if (!items.length) return null;
 
   return (
-    <div className={cn("relative w-full max-w-[1260px] mx-auto px-3 py-14", className)}>
+    <div className={cn("relative w-full max-w-[1260px] mx-auto px-3 py-14 !mb-0", className)}>
       <Swiper
         modules={[Navigation, Pagination, Autoplay, Keyboard]}
         spaceBetween={24}

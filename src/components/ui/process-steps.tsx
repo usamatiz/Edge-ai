@@ -39,7 +39,7 @@ const steps: Step[] = [
 
 export function ProcessSteps({ className }: ProcessStepsProps) {
   return (
-    <section className={cn("w-full py-10 bg-white", className)}>
+    <section className={cn("w-full py-14 bg-white", className)}>
       <div className="max-w-[1260px] mx-auto xl:px-0 px-3">
         {/* Header Section */}
         <div className="text-center mb-10">
@@ -97,9 +97,9 @@ export function ProcessSteps({ className }: ProcessStepsProps) {
           {/* Mobile/Tablet Layout */}
           <div className="xl:hidden space-y-6">
             <div className="grid lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-4">
-            {steps.map((step, index) => (
+            {steps.map((step) => (
               <div key={step.id} className="relative">
-                <div className="bg-gradient-to-r from-[#6366f1] via-[#7c3aed] to-[#a855f7] rounded-[16px] p-6 text-white h-fit md:min-h-[290px] min-h-[200px]">
+                <div className="bg-gradient-to-r from-[#5046E5] via-[#3A2DFD] to-[#a855f7] rounded-[12px] p-6 text-white h-fit md:min-h-[290px] min-h-[200px]">
                   {/* Number Circle */}
                   <div className="w-[40px] h-[40px] rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center mb-4">
                     <span className="text-white font-semibold">{step.number}</span>
@@ -117,11 +117,11 @@ export function ProcessSteps({ className }: ProcessStepsProps) {
                 </div>
                 
                 {/* Connecting Line */}
-                {index < steps.length - 1 && (
+                {/* {index < steps.length - 1 && (
                   <div className="md:hidden flex justify-center py-4">
                     <div className="w-0.5 h-8 bg-gradient-to-b from-[#6366f1] to-[#a855f7]"></div>
                   </div>
-                )}
+                )} */}
               </div>
             ))}
             </div>
