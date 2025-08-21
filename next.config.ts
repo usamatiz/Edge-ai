@@ -16,7 +16,7 @@ const securityHeaders = [
   },
   {
     key: 'X-Frame-Options',
-    value: 'DENY'
+    value: 'SAMEORIGIN'
   },
   {
     key: 'X-Content-Type-Options',
@@ -24,7 +24,7 @@ const securityHeaders = [
   },
   {
     key: 'Referrer-Policy',
-    value: 'origin-when-cross-origin'
+    value: 'strict-origin-when-cross-origin'
   },
   {
     key: 'Permissions-Policy',
@@ -38,12 +38,12 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: https://images.unsplash.com https://img.youtube.com https://i.ytimg.com https://www.google-analytics.com",
-      "connect-src 'self' https://www.google-analytics.com https://analytics.google.com",
-      "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com",
+      "connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://responsivedesignchecker.com https://responsivetesttool.com https://ui.dev",
+      "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://responsivedesignchecker.com https://responsivetesttool.com https://ui.dev",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
-      "frame-ancestors 'none'",
+      "frame-ancestors 'self' https://responsivedesignchecker.com https://responsivetesttool.com https://ui.dev",
       "media-src 'self' https://www.youtube.com https://youtube.com",
       "upgrade-insecure-requests"
     ].join('; ')
@@ -76,9 +76,7 @@ const nextConfig: NextConfig = {
     ];
   },
   // Enable experimental features for better security
-  experimental: {
-    serverComponentsExternalPackages: ['dompurify'],
-  },
+  serverExternalPackages: ['dompurify'],
   // Disable X-Powered-By header for security
   poweredByHeader: false,
 };

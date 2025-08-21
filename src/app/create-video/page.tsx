@@ -1,7 +1,6 @@
 "use client";
 
 import PreviousVideosGallery from "@/components/ui/previous-videos-gallery";
-import { Plus } from "lucide-react";
 import Link from "next/link";
 
 export default function CreateVideoPage() {
