@@ -93,7 +93,7 @@ export function Slider({
           <SwiperSlide key={item.id} className="swiper-slide px-3">
             <div className="bg-[#FAFAFA] rounded-[24px] p-8 h-full min-h-[300px] flex flex-col justify-between">
               {/* Statistic */}
-              <h3 className="text-[44px] md:text-[54px] font-semibold mb-4 slider-title">
+              <h3 className="text-[44px] md:text-[54px] font-semibold mb-4 slider-title leading-[60px]">
                 {item.statistic}
               </h3>
               

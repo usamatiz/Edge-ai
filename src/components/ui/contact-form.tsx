@@ -90,14 +90,14 @@ export default function ContactForm() {
 
             {/* Description */}
             <p className="text-[#5F5F5F] text-[20px] max-w-lg leading-[27px]">
-              Edge AI Realty was built for the underdog the agent who feels left behind by tech, overwhelmed by video, and unsure where to start. We know the feeling.
+              Edge AI Realty was built for the underdog—the agent who feels left behind by tech, overwhelmed by video, and unsure where to start. We know the feeling.
             </p>
           </div>
 
           {/* Right Section - Contact Form */}
           <div>
             <h3 className="md:text-[56px] text-[40px] font-semibold text-[#282828] mb-2">
-              Connect with US
+              Connect with Us
             </h3>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -186,17 +186,17 @@ export default function ContactForm() {
               )}
 
               {/* Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 pt-2 justify-end">
+              <div className="flex flex-col md:flex-row lg:flex-wrap lg:flex-row gap-4 pt-2 justify-end">
                 <button
                   type="button"
-                  className="py-[11.2px] md:max-w-[303px] max-w-full w-full bg-transparent border-2 border-[#5046E5] text-[#5046E5] rounded-full font-semibold text-[20px] leading-[32px] hover:bg-[#5046E5] hover:text-white transition-all duration-300 focus:outline-none cursor-pointer"
+                  className="py-[11.2px] xl:max-w-[303px] max-w-full w-full bg-transparent border-2 border-[#5046E5] text-[#5046E5] rounded-full font-semibold text-[20px] leading-[32px] hover:bg-[#5046E5] hover:text-white px-2 transition-all duration-300 focus:outline-none cursor-pointer"
                 >
                   Email Response Preferred
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-8 py-[11.2px] md:max-w-[218px] max-w-full w-full bg-[#5046E5] text-white rounded-full font-semibold text-[20px] leading-[32px] hover:bg-transparent hover:text-[#5046E5] border-2 border-[#5046E5] transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#5046E5] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="px-8 py-[11.2px] xl:max-w-[218px] max-w-full w-full bg-[#5046E5] text-white rounded-full font-semibold text-[20px] leading-[32px] hover:bg-transparent hover:text-[#5046E5] border-2 border-[#5046E5] transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#5046E5] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isSubmitting ? 'Sending...' : 'Request a Call'}
                 </button>
