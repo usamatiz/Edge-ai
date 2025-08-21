@@ -37,7 +37,7 @@ export function Slider({
   if (!items.length) return null;
 
   return (
-    <div className={cn("relative w-full max-w-[1260px] mx-auto px-3 py-14", className)}>
+    <div className={cn("relative w-full max-w-[1260px] mx-auto px-3 py-14 !mb-0", className)}>
       <Swiper
         modules={[Navigation, Pagination, Autoplay, Keyboard]}
         spaceBetween={24}
@@ -93,7 +93,7 @@ export function Slider({
           <SwiperSlide key={item.id} className="swiper-slide px-3">
             <div className="bg-[#FAFAFA] rounded-[24px] p-8 h-full min-h-[300px] flex flex-col justify-between">
               {/* Statistic */}
-              <h3 className="text-[44px] md:text-[54px] font-semibold mb-4 slider-title">
+              <h3 className="text-[44px] md:text-[54px] font-semibold mb-4 slider-title leading-[60px]">
                 {item.statistic}
               </h3>
               

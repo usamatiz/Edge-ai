@@ -8,7 +8,7 @@ export default function ActionCard(){
     const [isSigninModalOpen, setIsSigninModalOpen] = useState(false);
 
     return(
-        <div className="bg-[#060609] pb-20 pt-32 -mt-16" style={{ backgroundImage: 'url(/images/price-bg.png)', backgroundSize: 'cover', backgroundPosition: 'top', backgroundRepeat: 'no-repeat', backgroundAttachment: 'fixed' }}>
+        <div className="bg-[#060609] pb-20 pt-20" style={{ backgroundImage: 'url(/images/price-bg.png)', backgroundSize: 'cover', backgroundPosition: 'top', backgroundRepeat: 'no-repeat', backgroundAttachment: 'fixed' }}>
             <div className="max-w-[1260px] mx-auto xl:px-0 px-3">
                 <div className="bg-[#2F2F2F]/30 backdrop-blur-lg border border-[#D8D8D8]/70 rounded-[24px] px-[44px] py-[26px]">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-8">

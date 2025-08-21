@@ -381,7 +381,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
           {/* Modal Header */}
           <div className="flex items-center justify-between flex-shrink-0">
             <div className="flex-1">
-              <h3 id="signin-modal-title" className="md:text-[48px] text-[32px] font-semibold text-[#282828] text-center">
+              <h3 id="signin-modal-title" className="md:text-[48px] text-[25px] font-semibold text-[#282828] text-center">
                 Welcome Back to <span className="text-[#5046E5]">EdgeAi</span>
               </h3>
               <p id="signin-modal-description" className="text-[#667085] text-[16px] text-center mt-2">

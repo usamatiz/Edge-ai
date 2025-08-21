@@ -73,7 +73,7 @@ export default function HomePage() {
       <Partners/>
 
       {/* Slider Section */}
-      <section className="mb-16" data-aos="fade-up">
+      <section data-aos="fade-up">
         <Slider 
           items={SLIDER_ITEMS}
           autoPlay={true}
