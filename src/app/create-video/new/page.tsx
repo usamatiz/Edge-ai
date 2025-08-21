@@ -1,12 +1,18 @@
 "use client";
 
 import CreateVideoForm from "@/components/ui/create-video-form";
+// import { ArrowLeft } from "lucide-react";
+// import Link from "next/link";
 
 export default function NewVideoPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Main Content */}
       <div className="max-w-[1260px] mx-auto xl:px-0 px-3 lg:py-20 py-10">
+        {/* <Link href="/create-video" className="flex items-center gap-2 text-[#5F5F5F] mb-10">
+          <ArrowLeft size={24} />
+          <span className="text-lg font-medium">Back</span>
+        </Link> */}
         {/* Page Header */}
         <div className="text-center mb-8">
           <h1 className="text-[37px] md:text-4xl leading-[40px] lg:text-[42px] font-semibold text-[#171717] mb-4">
