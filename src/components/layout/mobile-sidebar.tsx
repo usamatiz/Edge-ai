@@ -10,6 +10,8 @@ import { useActiveSection } from "@/hooks/use-active-section";
 import SignupModal from "@/components/ui/signup-modal";
 import SigninModal from "@/components/ui/signin-modal";
 
+import { useAuth } from "@/contexts/AuthContext";
+
 interface MobileSidebarProps {
   isOpen: boolean;
   onClose: () => void;
@@ -82,9 +84,10 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const { trackNavigation, trackButtonClick } = useAnalytics();
   const [isSignupModalOpen, setIsSignupModalOpen] = React.useState(false);
   const [isSigninModalOpen, setIsSigninModalOpen] = React.useState(false);
+  const { isLoggedIn, currentUser, logout } = useAuth();
   
   // Track active section based on scroll position (only on home page)
-  const sectionIds = ['home', 'getting-started', 'how-it-works', 'benefits', 'pricing', 'faq', 'contact'];
+  const sectionIds = ['getting-started', 'how-it-works', 'benefits', 'pricing', 'faq', 'contact'];
   const activeSection = useActiveSection(sectionIds);
   
   // Check if we're on the home page
@@ -210,10 +213,12 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
               <div className="text-xs font-semibold text-[#5F5F5F] uppercase tracking-wider mb-4 px-2">
                 Navigation
               </div>
-                                                           {NAVIGATION_ITEMS.map((item, index) => {
-                  const sectionId = item.href.substring(1); // Remove the # from href
-                  const isActive = isHomePage && activeSection === sectionId;
-                 return (
+              
+              {/* Home Page Navigation Items */}
+              {NAVIGATION_ITEMS.map((item, index) => {
+                const sectionId = item.href.substring(1); // Remove the # from href
+                const isActive = isHomePage && activeSection === sectionId;
+                return (
                   <Link
                     key={item.label}
                     href={item.href}
@@ -223,22 +228,22 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                         ? "bg-gradient-to-r from-[#5046E5] to-[#3A2DFD] text-white"
                         : "text-gray-700 hover:text-gray-900 hover:bg-gray-100/90"
                     )}
-                                         onClick={(e) => {
-                       if (isHomePage) {
-                         // If we're on home page, handle smooth scrolling
-                         if (handleAnchorClick(item.href, onClose)) {
-                           e.preventDefault();
-                           trackNavigation(pathname, item.href, "click");
-                         }
-                       } else {
-                         // If we're on a different page, navigate to home page with hash
-                         e.preventDefault();
-                         onClose();
-                         const homeUrl = `/${item.href}`;
-                         trackNavigation(pathname, homeUrl, "click");
-                         window.location.href = homeUrl;
-                       }
-                     }}
+                    onClick={(e) => {
+                      if (isHomePage) {
+                        // If we're on home page, handle smooth scrolling
+                        if (handleAnchorClick(item.href, onClose)) {
+                          e.preventDefault();
+                          trackNavigation(pathname, item.href, "click");
+                        }
+                      } else {
+                        // If we're on a different page, navigate to home page with hash
+                        e.preventDefault();
+                        onClose();
+                        const homeUrl = `/${item.href}`;
+                        trackNavigation(pathname, homeUrl, "click");
+                        window.location.href = homeUrl;
+                      }
+                    }}
                     aria-current={isActive ? "page" : undefined}
                     aria-label={`${item.label}${isActive ? " (current page)" : ""}`}
                     style={{
@@ -284,6 +289,117 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                   </Link>
                 );
               })}
+
+              {/* Account Navigation Items - Only show when logged in */}
+              {isLoggedIn && (
+                <>
+                  <Link
+                    href="/account"
+                    onClick={() => {
+                      onClose();
+                      trackNavigation(pathname, "/account", "click");
+                    }}
+                    className={cn(
+                      "group relative flex items-center px-4 py-4 text-base font-medium rounded-2xl transition-all duration-500 ease-out overflow-hidden focus:outline-none",
+                      pathname === "/account"
+                        ? "bg-gradient-to-r from-[#5046E5] to-[#3A2DFD] text-white"
+                        : "text-gray-700 hover:text-gray-900 hover:bg-gray-100/90"
+                    )}
+                    aria-current={pathname === "/account" ? "page" : undefined}
+                    aria-label={`Account${pathname === "/account" ? " (current page)" : ""}`}
+                  >
+                    {/* Background Effects */}
+                    <div className={cn(
+                      "absolute inset-0 transition-all duration-500 ease-out",
+                      pathname === "/account"
+                        ? "bg-gradient-to-r from-blue-600/20 to-purple-600/20"
+                        : "bg-gradient-to-r from-gray-100/0 to-gray-100/0 group-hover:from-gray-100/50 group-hover:to-gray-100/30"
+                    )} />
+                    
+                    {/* Active Indicator */}
+                    {pathname === "/account" && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full shadow-lg" />
+                    )}
+                    
+                    {/* Icon Placeholder */}
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center mr-4 transition-all duration-300",
+                      pathname === "/account"
+                        ? "bg-white/20 text-white"
+                        : "bg-gray-100 text-gray-600 group-hover:bg-blue-100 group-hover:text-blue-600"
+                    )}>
+                      <div className="w-2 h-2 bg-current rounded-full" />
+                    </div>
+                    
+                    <span className="relative z-10 font-medium">
+                      Account
+                    </span>
+                    
+                    {/* Hover Animation */}
+                    <div className={cn(
+                      "absolute right-4 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0",
+                      pathname === "/account" ? "text-white" : "text-gray-400"
+                    )}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </Link>
+
+                  <Link
+                    href="/create-video"
+                    onClick={() => {
+                      onClose();
+                      trackNavigation(pathname, "/create-video", "click");
+                    }}
+                    className={cn(
+                      "group relative flex items-center px-4 py-4 text-base font-medium rounded-2xl transition-all duration-500 ease-out overflow-hidden focus:outline-none",
+                      pathname === "/create-video"
+                        ? "bg-gradient-to-r from-[#5046E5] to-[#3A2DFD] text-white"
+                        : "text-gray-700 hover:text-gray-900 hover:bg-gray-100/90"
+                    )}
+                    aria-current={pathname === "/create-video" ? "page" : undefined}
+                    aria-label={`My Videos${pathname === "/create-video" ? " (current page)" : ""}`}
+                  >
+                    {/* Background Effects */}
+                    <div className={cn(
+                      "absolute inset-0 transition-all duration-500 ease-out",
+                      pathname === "/create-video"
+                        ? "bg-gradient-to-r from-blue-600/20 to-purple-600/20"
+                        : "bg-gradient-to-r from-gray-100/0 to-gray-100/0 group-hover:from-gray-100/50 group-hover:to-gray-100/30"
+                    )} />
+                    
+                    {/* Active Indicator */}
+                    {pathname === "/create-video" && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full shadow-lg" />
+                    )}
+                    
+                    {/* Icon Placeholder */}
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center mr-4 transition-all duration-300",
+                      pathname === "/create-video"
+                        ? "bg-white/20 text-white"
+                        : "bg-gray-100 text-gray-600 group-hover:bg-blue-100 group-hover:text-blue-600"
+                    )}>
+                      <div className="w-2 h-2 bg-current rounded-full" />
+                    </div>
+                    
+                    <span className="relative z-10 font-medium">
+                      My Videos
+                    </span>
+                    
+                    {/* Hover Animation */}
+                    <div className={cn(
+                      "absolute right-4 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0",
+                      pathname === "/create-video" ? "text-white" : "text-gray-400"
+                    )}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
         </div>
@@ -291,34 +407,65 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
         {/* Action Buttons Section - Fixed at Bottom */}
         <div className="flex-shrink-0 p-6 border-t border-gray-200/50 bg-gradient-to-t from-gray-50/80 to-transparent">
           <div className="space-y-4">
-            <div className="text-xs font-semibold text-[#5F5F5F] uppercase tracking-wider mb-4 px-2">
-              Account
-            </div>
-            
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  onClose();
-                  setIsSigninModalOpen(true);
-                  trackButtonClick("login", "mobile_sidebar", "open_modal");
-                }}
-                className="flex-1 inline-flex items-center justify-center px-6 py-4 text-base font-medium text-[#5046E5] border-2 border-[#5046E5] rounded-2xl hover:bg-[#5046E5] hover:text-white transition-all duration-300 focus:outline-none"
-                aria-label="Log in to your account"
-              >
-                Log In
-              </button>
-              <button
-                onClick={() => {
-                  onClose();
-                  setIsSignupModalOpen(true);
-                  trackButtonClick("register", "mobile_sidebar", "open_modal");
-                }}
-                className="flex-1 inline-flex items-center justify-center px-6 py-4 text-base font-medium bg-gradient-to-r from-[#5046E5] to-[#3A2DFD] text-white rounded-2xl hover:from-[#3A2DFD] hover:to-[#5046E5] transition-all duration-300 shadow-sm hover:shadow-md focus:outline-none"
-                aria-label="Create a new account"
-              >
-                Sign Up
-              </button>
-            </div>
+            {isLoggedIn ? (
+              <div className="space-y-4">
+                {/* User Info */}
+                <div className="px-2">
+                  <div className="text-xs font-semibold text-[#5F5F5F] uppercase tracking-wider mb-2">
+                    Signed in as
+                  </div>
+                  <div className="text-sm font-medium text-gray-700">
+                    {currentUser?.firstName} {currentUser?.lastName}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {currentUser?.email}
+                  </div>
+                </div>
+                
+                {/* Logout Button */}
+                <button
+                  onClick={() => {
+                    logout();
+                    onClose();
+                    trackButtonClick("logout", "mobile_sidebar", "logout");
+                  }}
+                  className="w-full inline-flex items-center justify-center px-6 py-4 text-base font-medium text-red-600 border-2 border-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all duration-300 focus:outline-none"
+                  aria-label="Log out of your account"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="text-xs font-semibold text-[#5F5F5F] uppercase tracking-wider mb-4 px-2">
+                  Account
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      onClose();
+                      setIsSigninModalOpen(true);
+                      trackButtonClick("login", "mobile_sidebar", "open_modal");
+                    }}
+                    className="flex-1 inline-flex items-center justify-center px-6 py-4 text-base font-medium text-[#5046E5] border-2 border-[#5046E5] rounded-2xl hover:bg-[#5046E5] hover:text-white transition-all duration-300 focus:outline-none"
+                    aria-label="Log in to your account"
+                  >
+                    Log In
+                  </button>
+                  <button
+                    onClick={() => {
+                      onClose();
+                      setIsSignupModalOpen(true);
+                      trackButtonClick("register", "mobile_sidebar", "open_modal");
+                    }}
+                    className="flex-1 inline-flex items-center justify-center px-6 py-4 text-base font-medium bg-gradient-to-r from-[#5046E5] to-[#3A2DFD] text-white rounded-2xl hover:from-[#3A2DFD] hover:to-[#5046E5] transition-all duration-300 shadow-sm hover:shadow-md focus:outline-none"
+                    aria-label="Create a new account"
+                  >
+                    Sign Up
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

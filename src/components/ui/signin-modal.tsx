@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react'
 import { sanitizeInput, RateLimiter, CSRFProtection } from '@/lib/utils'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface SigninModalProps {
   isOpen: boolean
@@ -21,15 +22,12 @@ interface FormErrors {
   general?: string
 }
 
-interface UserData {
-  firstName: string
-  lastName: string
-  email: string
-  phone: string
-  createdAt: string
-}
+
 
 export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninModalProps) {
+  // Use shared auth context
+  const { isUserRegistered, getUserByEmail, login } = useAuth()
+  
   const [formData, setFormData] = useState<FormData>({
     email: '',
     password: ''
@@ -42,12 +40,6 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
-  // Legacy submission tracking (now using RateLimiter class)
-  // const [submissionCount, setSubmissionCount] = useState(0)
-  // const [lastSubmissionTime, setLastSubmissionTime] = useState(0)
-  
-  // State to store registered users (this would come from your signup modal or API)
-  const [registeredUsers] = useState<UserData[]>([])
   
   // Toast state
   const [showToast, setShowToast] = useState(false)
@@ -110,7 +102,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
       [field]: sanitizedValue
     }))
     
-    // Clear error when user starts typing
+    // Clear error when user starts typing (keep this for better UX)
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
@@ -119,32 +111,9 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
     }
   }
 
-  const handleInputBlur = (field: keyof FormData) => {
-    // Validate on blur
-    validateField(field, formData[field])
-  }
-
-  const validateField = (field: keyof FormData, value: string) => {
-    const newErrors = { ...errors }
-
-    switch (field) {
-      case 'email':
-        if (!value.trim()) {
-          newErrors.email = 'Email is required'
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-          newErrors.email = 'Please enter a valid email address'
-        }
-        break
-      case 'password':
-        if (!value.trim()) {
-          newErrors.password = 'Password is required'
-        } else if (value.length < 6) {
-          newErrors.password = 'Password must be at least 6 characters'
-        }
-        break
-    }
-
-    setErrors(newErrors)
+  // Remove blur validation - validation only happens on submit
+  const handleInputBlur = () => {
+    // No validation on blur - only on submit
   }
 
   const validateForm = () => {
@@ -153,9 +122,26 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
       password: ''
     }
 
-    // Validate each field
-    const fields: (keyof FormData)[] = ['email', 'password']
-    fields.forEach(field => validateField(field, formData[field]))
+    // Validate each field and collect errors
+    Object.entries(formData).forEach(([key, value]) => {
+      const field = key as keyof FormData
+      switch (field) {
+        case 'email':
+          if (!value.trim()) {
+            newErrors.email = 'Email is required'
+          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+            newErrors.email = 'Please enter a valid email address'
+          }
+          break
+        case 'password':
+          if (!value.trim()) {
+            newErrors.password = 'Password is required'
+          } else if (value.length < 6) {
+            newErrors.password = 'Password must be at least 6 characters'
+          }
+          break
+      }
+    })
 
     // Set the errors
     setErrors(newErrors)
@@ -199,34 +185,47 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000))
 
-      // Check if user exists (in a real app, this would be an API call)
-      const userExists = registeredUsers.some(user => 
-        user.email.toLowerCase() === formData.email.toLowerCase()
-      )
-      
-      if (!userExists) {
+      // Check if user exists using shared context
+      if (!isUserRegistered(formData.email)) {
         showToastMessage('Invalid email or password. Please try again.', 'error')
         return
       }
 
+      // Get user data for personalized welcome message
+      const userData = getUserByEmail(formData.email)
+      
       // In a real app, you would verify the password here
       // For demo purposes, we'll just check if the email exists
       
-      // Show success message
-      setShowSuccess(true)
-      showToastMessage('Login successful! Welcome back to EdgeAi.', 'success')
+      // Log the user in
+      const loginSuccess = login(formData.email)
       
-      // Save email if "remember me" is checked
-      if (rememberMe) {
-        localStorage.setItem('signinEmail', formData.email)
-      } else {
-        localStorage.removeItem('signinEmail')
-      }
+      if (loginSuccess) {
+        // Show success toast and close modal
+        const welcomeMessage = userData 
+          ? `Login successful! Welcome back, ${userData.firstName}!`
+          : 'Login successful! Welcome back to EdgeAi.'
+        showToastMessage(welcomeMessage, 'success')
+        
+        // Close modal immediately after successful login
+        setTimeout(() => {
+          onClose()
+        }, 100)
+        
+        // Save email if "remember me" is checked
+        if (rememberMe) {
+          localStorage.setItem('signinEmail', formData.email)
+        } else {
+          localStorage.removeItem('signinEmail')
+        }
 
-      // Auto-close after success message
-      setTimeout(() => {
-        handleClose()
-      }, 2000)
+        // Auto-close after success message
+        setTimeout(() => {
+          handleClose()
+        }, 2000)
+      } else {
+        showToastMessage('Login failed. Please try again.', 'error')
+      }
 
     } catch {
       showToastMessage('Something went wrong. Please try again.', 'error')
@@ -367,7 +366,14 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
               <div className="text-center">
                 <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
                 <h3 className="text-2xl font-semibold text-gray-800 mb-2">Login Successful!</h3>
-                <p className="text-gray-600">Welcome back to EdgeAi. You can now start creating amazing videos.</p>
+                <p className="text-gray-600">
+                  {(() => {
+                    const userData = getUserByEmail(formData.email)
+                    return userData 
+                      ? `Welcome back, ${userData.firstName} ${userData.lastName}! You can now start creating amazing videos.`
+                      : 'Welcome back to EdgeAi. You can now start creating amazing videos.'
+                  })()}
+                </p>
               </div>
             </div>
           )}
@@ -411,7 +417,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    onBlur={() => handleInputBlur('email')}
+                    onBlur={handleInputBlur}
                     placeholder="Enter Email"
                     aria-describedby={errors.email ? 'email-error' : undefined}
                     aria-invalid={!!errors.email}
@@ -438,7 +444,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
                       type={showPassword ? 'text' : 'password'}
                       value={formData.password}
                       onChange={(e) => handleInputChange('password', e.target.value)}
-                      onBlur={() => handleInputBlur('password')}
+                      onBlur={handleInputBlur}
                       placeholder="**********"
                       aria-describedby={errors.password ? 'password-error' : undefined}
                       aria-invalid={!!errors.password}

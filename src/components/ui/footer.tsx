@@ -47,10 +47,10 @@ export default function Footer() {
             {/* Main footer content */}
             <div className="bg-white">
                 <div className="max-w-[1260px] mx-auto px-3 py-12">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         
                         {/* Left Section - Brand & Social */}
-                        <div className="space-y-6">
+                        <div className="space-y-5">
                             {/* Brand */}
                             <div>
                             <Link 
@@ -86,7 +86,7 @@ export default function Footer() {
                         
                         {/* Right Section - Navigation Links */}
                         <div className="lg:justify-self-end">
-                            <h3 className="text-[#282828] font-semibold text-[26px] mb-5 mt-8">Links</h3>
+                            <h3 className="text-[#282828] font-semibold text-[26px] mb-5">Links</h3>
                             <div className="grid grid-cols-1 gap-24">
                                 {/* Column 1 */}
                                 <div className="space-y-3 flex gap-6 flex-wrap">
@@ -102,6 +102,9 @@ export default function Footer() {
                                     ))}
                                 </div>
                             </div>
+                            <Link href="/privacy-policy" className="text-[#282828] text-[16px] hover:text-[#5046E5] transition-all duration-200 underline mt-4">
+                                Privacy Policy
+                            </Link>
                         </div>
                     </div>
                 </div>

@@ -1,13 +1,29 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Barlow, Quicksand } from "next/font/google";
 import { Header } from "@/components/layout";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { AuthProvider } from "@/contexts/AuthContext";
+// import { AuthDebug } from "@/components/dev/AuthDebug";
 import "./globals.css";
 import { Footer } from "@/components/ui";
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
+});
+
+const barlow = Barlow({
+  variable: "--font-barlow",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+});
+
+const quicksand = Quicksand({
+  variable: "--font-quicksand",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -37,14 +53,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${inter.variable} font-sans antialiased min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50`}
+        className={`${inter.variable} ${barlow.variable} ${quicksand.variable} font-sans antialiased min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50`}
       >
         <ErrorBoundary>
-          <Header />
-          <main className="pt-16 lg:pt-20">
-            {children}
-          </main>
-          <Footer />
+          <AuthProvider>
+            <Header />
+            <main className="pt-16 lg:pt-20">
+              {children}
+            </main>
+            <Footer />
+            {/* <AuthDebug /> */}
+          </AuthProvider>
         </ErrorBoundary>
       </body>
     </html>

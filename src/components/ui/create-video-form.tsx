@@ -4,9 +4,10 @@ import { useState, useRef, useEffect } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ChevronDown, Check, AlertCircle } from 'lucide-react'
+import { Check, AlertCircle } from 'lucide-react'
 import CreateVideoModal from './create-video-modal'
 import { sanitizeInput, RateLimiter, CSRFProtection } from '@/lib/utils'
+import { IoMdArrowDropdown } from "react-icons/io";
 
 // Zod validation schema
 const createVideoSchema = z.object({
@@ -206,14 +207,14 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
                }
              }, 100)
            }}
-          className={`w-full px-4 py-3 bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-left transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white flex items-center justify-between cursor-pointer ${
+          className={`w-full px-4 py-[10.5px] text-[18px] font-normal bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-left transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white flex items-center justify-between cursor-pointer ${
             hasError ? 'ring-2 ring-red-500' : ''
           } ${selectedOption ? 'text-gray-800 bg-[#F5F5F5]' : 'text-[#11101066]'}`}
           aria-describedby={hasError ? `${field}-error` : undefined}
           aria-invalid={hasError ? 'true' : 'false'}
         >
           <span>{selectedOption ? selectedOption.label : placeholder}</span>
-          <ChevronDown 
+          <IoMdArrowDropdown 
             className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} 
           />
         </button>
@@ -263,7 +264,7 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
           autoComplete={autoComplete}
           aria-describedby={hasError ? `${field}-error` : undefined}
           aria-invalid={hasError ? 'true' : 'false'}
-          className={`w-full px-4 py-3 bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white ${
+          className={`w-full px-4 py-[10.5px] text-[18px] font-normal placeholder:text-[#11101066] bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-gray-800 transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white ${
             hasError ? 'ring-2 ring-red-500' : ''
           }`}
         />
@@ -318,7 +319,7 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
               <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Name <span className="text-red-500">*</span>
             </label>
-            {renderInput('name', 'Preferred name for the video', 'text', 'name')}
+            {renderInput('name', 'e.g. John Smith', 'text', 'name')}
           </div>
           
           <div>
@@ -335,69 +336,52 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Company Name <span className="text-red-500">*</span>
             </label>
-            {renderInput('companyName', 'Your brokerage or company name', 'text', 'organization')}
+            {renderInput('companyName', 'e.g. Keller Williams', 'text', 'organization')}
           </div>
           
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               License <span className="text-red-500">*</span>
             </label>
-            {renderInput('license', 'Your real estate license number', 'text')}
+            {renderInput('license', 'e.g. License #12345', 'text')}
           </div>
           
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Tailored Fit <span className="text-red-500">*</span>
             </label>
-            {renderInput('tailoredFit', 'Your unique selling proposition or specialty', 'text')}
+            {renderInput('tailoredFit', 'e.g. First-time buyer specialist', 'text')}
           </div>
           
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Social Handles <span className="text-red-500">*</span>
             </label>
-            {renderInput('socialHandles', '@username, @facebook, @instagram', 'text')}
+            {renderInput('socialHandles', 'e.g. @johnsmith, @facebook', 'text')}
           </div>
         </div>
 
         {/* Row 3 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
-              Video Topic <span className="text-red-500">*</span>
-            </label>
-            {renderInput('videoTopic', 'Market update, new listing, buyer tips, etc.', 'text')}
-          </div>
-          
-          <div>
-            <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
-              Topic Key Points <span className="text-red-500">*</span>
-            </label>
-            {renderInput('topicKeyPoints', 'Main points you want to highlight in the video', 'text')}
-          </div>
-        </div>
-
-        {/* Row 4 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               City <span className="text-red-500">*</span>
             </label>
-            {renderInput('city', 'Your primary market area or city', 'text', 'address-level2')}
+            {renderInput('city', 'e.g. Los Angeles', 'text', 'address-level2')}
           </div>
           
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Preferred Tone <span className="text-red-500">*</span>
             </label>
-            {renderInput('preferredTone', 'Professional, conversational, energetic', 'text')}
+            {renderInput('preferredTone', 'e.g. Professional, friendly, etc.', 'text')}
           </div>
           
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Call to Action <span className="text-red-500">*</span>
             </label>
-            {renderInput('callToAction', 'Call me, visit my website, schedule consultation', 'text')}
+            {renderInput('callToAction', 'e.g. Call for consultation', 'text')}
           </div>
           
           <div>
@@ -405,6 +389,23 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
               Email <span className="text-red-500">*</span>
             </label>
             {renderInput('email', 'your.email@example.com', 'email', 'email')}
+          </div>
+        </div>
+
+        {/* Row 4 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div>
+            <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
+              Video Topic <span className="text-red-500">*</span>
+            </label>
+            {renderInput('videoTopic', 'e.g. Market trends, new listing', 'text')}
+          </div>
+          
+          <div>
+            <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
+              Topic Key Points <span className="text-red-500">*</span>
+            </label>
+            {renderInput('topicKeyPoints', 'Low rates, great location, etc.', 'text')}
           </div>
         </div>
 

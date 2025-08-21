@@ -1,9 +1,9 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Check, Zap, Users, BarChart3 } from 'lucide-react';
 import Image from 'next/image';
-import Link from 'next/link';
+import SigninModal from './signin-modal';
 
 interface PricingPlan {
   id: string;
@@ -25,6 +25,8 @@ interface EnterprisePlan {
 }
 
 const PricingSection = () => {
+  const [isSigninModalOpen, setIsSigninModalOpen] = useState(false);
+
   const pricingPlans: PricingPlan[] = [
     {
       id: 'basic',
@@ -91,7 +93,7 @@ const PricingSection = () => {
   };
 
   return (
-    <section className="w-full py-16 bg-black relative overflow-hidden" style={{backgroundImage: `url('/images/price-bg.png')`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', backgroundAttachment: 'fixed'}}>
+    <section className="w-full py-20 bg-black relative overflow-hidden" style={{backgroundImage: `url('/images/price-bg.png')`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', backgroundAttachment: 'fixed'}}>
       <div className="max-w-[1260px] mx-auto xl:px-0 px-3 relative z-10">
         {/* Header Section */}
         <div className="text-center mb-16">
@@ -143,7 +145,7 @@ const PricingSection = () => {
                   {/* Plan Header */}
                   <div className="pt-3">
                     <div className="mb-0">
-                      <span className="text-[30px] md:text-[42px] font-semibold text-white">{plan.price}</span>
+                      <span className="text-[30px] md:text-[42px] font-semibold text-white">{plan.price} </span>
                       <span className="text-white text-[18px] md:text-[24px]">{plan.period}</span>
                     </div>
                     <p className="text-white text-[18px] font-medium leading-[150%]">{plan.description}</p>
@@ -165,12 +167,12 @@ const PricingSection = () => {
                   </div>
 
                   {/* CTA Button */}
-                  <Link
-                    href={'/login'}
-                    className={`w-fit py-[11.6px] px-[28.3px] rounded-[39px] transition-all duration-300 bg-[#5046E5] text-white hover:bg-transparent border border-[#5046E5] hover:text-white text-[18px] leading-[20px] font-medium`}
+                  <button
+                    onClick={() => setIsSigninModalOpen(true)}
+                    className={`w-fit py-[11.6px] px-[28.3px] rounded-[39px] transition-all duration-300 bg-[#5046E5] text-white hover:bg-transparent border border-[#5046E5] hover:text-white text-[18px] leading-[20px] font-medium cursor-pointer`}
                   >
                     {plan.buttonText}
-                  </Link>
+                  </button>
                   </div>
                 </div>
                 </div>
@@ -213,12 +215,12 @@ const PricingSection = () => {
 
               {/* Enterprise Button */}
               <div className="lg:flex-shrink-0">
-                <Link
-                  href={'/login'}
-                  className={`w-fit py-[11.6px] px-[28.3px] rounded-[39px] transition-all duration-300 bg-[#5046E5] text-white hover:bg-transparent border border-[#5046E5] hover:text-white text-[18px] leading-[20px] font-medium`}
+                <button
+                  onClick={() => setIsSigninModalOpen(true)}
+                  className={`w-fit py-[11.6px] px-[28.3px] rounded-[39px] transition-all duration-300 bg-[#5046E5] text-white hover:bg-transparent border border-[#5046E5] hover:text-white text-[18px] leading-[20px] font-medium cursor-pointer`}
                 >
                   {enterprisePlan.buttonText}
-                </Link>
+                </button>
               </div>
             </div>
           </div>
@@ -226,6 +228,11 @@ const PricingSection = () => {
 
         </div>
       </div>
+
+      <SigninModal
+        isOpen={isSigninModalOpen}
+        onClose={() => setIsSigninModalOpen(false)}
+      />
 
       <style jsx>{`
         @keyframes fadeInUp {

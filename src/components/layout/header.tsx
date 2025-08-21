@@ -10,6 +10,8 @@ import { useAnalytics } from "@/hooks/use-analytics";
 import { useActiveSection } from "@/hooks/use-active-section";
 import SignupModal from "@/components/ui/signup-modal";
 import SigninModal from "@/components/ui/signin-modal";
+import ProfileDropdown from "@/components/ui/profile-dropdown";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Throttle function for scroll performance
 function throttle<T extends (...args: unknown[]) => unknown>(
@@ -42,9 +44,10 @@ export function Header() {
   const [isSigninModalOpen, setIsSigninModalOpen] = React.useState(false);
   const pathname = usePathname();
   const { trackNavigation, trackButtonClick } = useAnalytics();
+  const { isLoggedIn } = useAuth();
   
   // Track active section based on scroll position (only on home page)
-  const sectionIds = ['home', 'getting-started', 'how-it-works', 'benefits', 'pricing', 'faq', 'contact'];
+  const sectionIds = ['getting-started', 'how-it-works', 'benefits', 'pricing', 'faq', 'contact'];
   const activeSection = useActiveSection(sectionIds);
   
   // Check if we're on the home page
@@ -102,7 +105,7 @@ export function Header() {
             {/* Logo */}
             <Link 
               href="/"
-              className="text-[#5046E5] text-xl font-bold"
+              className="text-[#5046E5] text-xl font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5046E5] focus-visible:ring-offset-2 rounded-md px-1 py-1"
               aria-label={`${BRAND_NAME} - Go to homepage`}
             >
             EdgeAI<span className="text-[#E54B46] font-bold">Realty</span>
@@ -115,14 +118,14 @@ export function Header() {
               aria-label="Main navigation"
             >
               {NAVIGATION_ITEMS.map((item) => {
-                const sectionId = item.href.substring(1); // Remove the # from href
+                const sectionId = item.href.substring(1);
                 const isActive = isHomePage && activeSection === sectionId;
                 return (
                   <Link
                     key={item.label}
                     href={item.href}
                     className={cn(
-                      "group relative px-4 py-2 text-sm font-semibold transition-all duration-500 ease-out focus:outline-none",  
+                      "group relative px-4 py-2 text-sm font-semibold transition-all duration-500 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5046E5] focus-visible:ring-offset-2 rounded-md",  
                       isActive
                         ? "text-[#5046E5]"
                         : "text-[#282828] hover:text-[#5046E5]"
@@ -165,30 +168,36 @@ export function Header() {
 
             {/* Desktop Action Buttons */}
             <div className="hidden lg:flex items-center space-x-3">
-              <button
-                onClick={() => {
-                  setIsSigninModalOpen(true);
-                  trackButtonClick("login", "header", "open_modal");
-                }}
-                className={cn(
-                  "inline-flex cursor-pointer text-[#282828] py-[10.9px] px-[19.5px] rounded-full hover:bg-gray-200 transition-all duration-300",
-                )}
-                aria-label="Log in to your account"
-              >
-                Log In
-              </button>
-              <button
-                onClick={() => {
-                  setIsSignupModalOpen(true);
-                  trackButtonClick("register", "header", "open_modal");
-                }}
-                className={cn(
-                  "inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium focus-visible:outline-none py-[10.9px] px-[19.5px] bg-[#5046E5] text-white border border-[#5046e5] hover:bg-transparent  hover:text-[#5046e5] transition-all duration-500"
-                )}
-                aria-label="Create a new account"
-              >
-                Sign Up
-              </button>
+              {isLoggedIn ? (
+                <ProfileDropdown />
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      setIsSigninModalOpen(true);
+                      trackButtonClick("login", "header", "open_modal");
+                    }}
+                    className={cn(
+                      "inline-flex cursor-pointer text-[#282828] py-[10.9px] px-[19.5px] rounded-full hover:bg-gray-200 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5046E5] focus-visible:ring-offset-2",
+                    )}
+                    aria-label="Log in to your account"
+                  >
+                    Log In
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsSignupModalOpen(true);
+                      trackButtonClick("register", "header", "open_modal");
+                    }}
+                    className={cn(
+                      "inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5046E5] focus-visible:ring-offset-2 py-[10.9px] px-[19.5px] bg-[#5046E5] text-white border border-[#5046e5] hover:bg-transparent  hover:text-[#5046e5] transition-all duration-500"
+                    )}
+                    aria-label="Create a new account"
+                  >
+                    Sign Up
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -205,7 +214,7 @@ export function Header() {
                 }
               }}
               className={cn(
-                "lg:hidden p-2 rounded-xl transition-all duration-200 cursor-pointer focus:outline-none",
+                "lg:hidden p-2 rounded-xl transition-all duration-200 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5046E5] focus-visible:ring-offset-2",
                 isScrolled
                   ? "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
                   : "text-gray-500 hover:text-gray-600 hover:bg-gray-100"
