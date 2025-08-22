@@ -14,7 +14,7 @@ interface CreateVideoModalProps {
 
 type ModalStep = 'form' | 'loading' | 'complete'
 
-export default function CreateVideoModal({ isOpen, onClose, videoTitle, startAtComplete = false, videoData }: CreateVideoModalProps) {
+export default function CreateVideoModal({ isOpen, onClose, startAtComplete = false, videoData }: CreateVideoModalProps) {
   const [currentStep, setCurrentStep] = useState<ModalStep>(startAtComplete ? 'complete' : 'form')
   const [formData, setFormData] = useState({
     prompt: '',

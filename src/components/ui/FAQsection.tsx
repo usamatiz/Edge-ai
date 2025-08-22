@@ -146,7 +146,8 @@ const FAQSection = () => {
   return (
     <section className="max-w-[1260px] mx-auto px-3 py-4 lg:py-10" aria-labelledby="faq-heading">
       {/* Header */}
-      <div className="text-center mb-8 sm:mb-12 lg:mb-16">
+        
+        <div className="text-center mb-8 sm:mb-12 lg:mb-16" id="faq">
         <h1 
           id="faq-heading"
           className="text-2xl sm:text-3xl md:text-4xl lg:text-[42px] font-semibold mb-2 sm:mb-4 lg:mb-1" 
