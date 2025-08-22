@@ -4,6 +4,9 @@ import React, { useState } from 'react';
 import { Check, Zap, Users, BarChart3 } from 'lucide-react';
 import Image from 'next/image';
 import SigninModal from './signin-modal';
+import { useAuth } from '@/contexts/AuthContext';
+import { smoothScrollTo } from '@/lib/utils';
+import Link from 'next/link';
 
 interface PricingPlan {
   id: string;
@@ -26,6 +29,16 @@ interface EnterprisePlan {
 
 const PricingSection = () => {
   const [isSigninModalOpen, setIsSigninModalOpen] = useState(false);
+  const { isLoggedIn } = useAuth();
+
+  const handleGetStartedClick = (e: React.MouseEvent) => {
+    if (isLoggedIn) {
+      window.location.href = '/create-video';
+    } else {
+      e.preventDefault();
+      smoothScrollTo('how-it-works');
+    }
+  };  
 
   const pricingPlans: PricingPlan[] = [
     {
@@ -167,12 +180,18 @@ const PricingSection = () => {
                   </div>
 
                   {/* CTA Button */}
-                  <button
-                    onClick={() => setIsSigninModalOpen(true)}
+                  {isLoggedIn ? (
+                    <Link href="/create-video" className="w-fit py-[11.6px] px-[28.3px] rounded-[39px] transition-all duration-300 bg-[#5046E5] text-white hover:bg-transparent border border-[#5046E5] hover:text-white text-[18px] leading-[20px] font-medium cursor-pointer">
+                      {plan.buttonText}
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={handleGetStartedClick}
                     className={`w-fit py-[11.6px] px-[28.3px] rounded-[39px] transition-all duration-300 bg-[#5046E5] text-white hover:bg-transparent border border-[#5046E5] hover:text-white text-[18px] leading-[20px] font-medium cursor-pointer`}
-                  >
-                    {plan.buttonText}
-                  </button>
+                    >
+                      {plan.buttonText}
+                    </button>
+                  )}
                   </div>
                 </div>
                 </div>
@@ -215,12 +234,18 @@ const PricingSection = () => {
 
               {/* Enterprise Button */}
               <div className="lg:flex-shrink-0">
-                <button
-                  onClick={() => setIsSigninModalOpen(true)}
+                {isLoggedIn ? (
+                  <Link href="/create-video" className="w-fit py-[11.6px] px-[28.3px] rounded-[39px] transition-all duration-300 bg-[#5046E5] text-white hover:bg-transparent border border-[#5046E5] hover:text-white text-[18px] leading-[20px] font-medium cursor-pointer">
+                    {enterprisePlan.buttonText}
+                  </Link>
+                ) : (
+                  <button
+                    onClick={handleGetStartedClick}
                   className={`w-fit py-[11.6px] px-[28.3px] rounded-[39px] transition-all duration-300 bg-[#5046E5] text-white hover:bg-transparent border border-[#5046E5] hover:text-white text-[18px] leading-[20px] font-medium cursor-pointer`}
                 >
                   {enterprisePlan.buttonText}
-                </button>
+                  </button>
+                )}
               </div>
             </div>
           </div>

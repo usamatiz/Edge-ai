@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 export function useActiveSection(sectionIds: string[], offset: number = 100) {
-  const [activeSection, setActiveSection] = useState<string>('getting-started');
+  const [activeSection, setActiveSection] = useState<string>('');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -11,8 +11,6 @@ export function useActiveSection(sectionIds: string[], offset: number = 100) {
       
       // Find which section is currently centered in the viewport
       let currentSection = '';
-      let closestSection = '';
-      let closestDistance = Infinity;
       
       for (let i = 0; i < sectionIds.length; i++) {
         const sectionId = sectionIds[i];
@@ -20,19 +18,11 @@ export function useActiveSection(sectionIds: string[], offset: number = 100) {
         
         if (element) {
           const elementTop = element.offsetTop;
-        //   const elementBottom = elementTop + element.offsetHeight;
+          const elementBottom = elementTop + element.offsetHeight;
           const elementCenter = elementTop + (element.offsetHeight / 2);
           
-          // Calculate distance from viewport center to section center
-          const distance = Math.abs(viewportCenter - elementCenter);
-          
-          // Keep track of the closest section
-          if (distance < closestDistance) {
-            closestDistance = distance;
-            closestSection = sectionId;
-          }
-          
-          // Check if the section center is within the viewport
+          // Check if the section is actually visible in the viewport
+          // A section is considered visible if its center is within the viewport
           if (elementCenter >= scrollPosition && elementCenter <= scrollPosition + windowHeight) {
             currentSection = sectionId;
             break;
@@ -40,16 +30,7 @@ export function useActiveSection(sectionIds: string[], offset: number = 100) {
         }
       }
       
-      // If no section is centered in viewport, use the closest one
-      if (!currentSection) {
-        currentSection = closestSection;
-      }
-      
-      // If we're at the very top, set getting-started as active
-      if (scrollPosition < 200) {
-        currentSection = 'getting-started';
-      }
-      
+      // Only set active section if we found a section that's actually visible
       setActiveSection(currentSection);
     };
 

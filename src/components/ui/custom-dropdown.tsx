@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { Check, AlertCircle } from 'lucide-react'
 import { IoMdArrowDropdown } from "react-icons/io"
 import { cn } from '@/lib/utils'
