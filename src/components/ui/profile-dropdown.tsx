@@ -87,7 +87,7 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
         ref={buttonRef}
         onClick={toggleDropdown}
         className={cn(
-          "flex items-center justify-center w-[128px] cursor-pointer gap-2 px-2 py-[7.4px] rounded-full border-2 border-[#5F5F5F] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5046E5] focus-visible:ring-offset-2",
+          "flex items-center justify-center w-[160px] cursor-pointer gap-2 px-2 py-[7.4px] rounded-full border-2 border-[#5F5F5F] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5046E5] focus-visible:ring-offset-2",
           isMobile
             ? "w-full justify-between bg-gray-100 hover:bg-gray-200 px-4 py-3"
             : "hover:bg-gray-100 border-2 border-[#5F5F5F] hover:border-gray-300"
@@ -98,7 +98,10 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
       >
         
         {/* Name (desktop) or full info (mobile) */}
-        <div className={cn("flex items-center gap-2", isMobile ? "flex-1" : "")}>
+        <div className={cn("flex items-center gap-x-3", isMobile ? "flex-1" : "")}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 12C10.9 12 9.95833 11.6083 9.175 10.825C8.39167 10.0417 8 9.1 8 8C8 6.9 8.39167 5.95833 9.175 5.175C9.95833 4.39167 10.9 4 12 4C13.1 4 14.0417 4.39167 14.825 5.175C15.6083 5.95833 16 6.9 16 8C16 9.1 15.6083 10.0417 14.825 10.825C14.0417 11.6083 13.1 12 12 12ZM4 20V17.2C4 16.6333 4.146 16.1127 4.438 15.638C4.73 15.1633 5.11733 14.8007 5.6 14.55C6.63333 14.0333 7.68333 13.646 8.75 13.388C9.81667 13.13 10.9 13.0007 12 13C13.1 12.9993 14.1833 13.1287 15.25 13.388C16.3167 13.6473 17.3667 14.0347 18.4 14.55C18.8833 14.8 19.271 15.1627 19.563 15.638C19.855 16.1133 20.0007 16.634 20 17.2V20H4Z" fill="#5F5F5F"/>
+            </svg>
           <span className={cn(
             "font-medium text-[#5F5F5F]",
             isMobile ? "text-[20px]" : "text-[20px] hidden lg:block"
