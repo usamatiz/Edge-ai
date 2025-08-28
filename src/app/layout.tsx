@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { Inter, Barlow, Quicksand } from "next/font/google";
 import { Header } from "@/components/layout";
-import { ErrorBoundary } from "@/components/error-boundary";
-import { AuthProvider } from "@/contexts/AuthContext";
+import ClientProviders from "@/components/providers/ClientProviders";
 // import { AuthDebug } from "@/components/dev/AuthDebug";
 import "./globals.css";
-import { Footer } from "@/components/ui";
+import { Footer, AuthLoader } from "@/components/ui";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -54,17 +53,18 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${inter.variable} ${barlow.variable} ${quicksand.variable} font-sans antialiased min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50`}
+        suppressHydrationWarning={true}
       >
-        <ErrorBoundary>
-          <AuthProvider>
+        <ClientProviders>
+          <AuthLoader>
             <Header />
             <main className="pt-16 lg:pt-20">
               {children}
             </main>
             <Footer />
             {/* <AuthDebug /> */}
-          </AuthProvider>
-        </ErrorBoundary>
+          </AuthLoader>
+        </ClientProviders>
       </body>
     </html>
   );

@@ -1,85 +1,27 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import Image from 'next/image'
+import { useState, useMemo, useEffect } from 'react'
 import CreateVideoModal from './create-video-modal'
 import { IoMdArrowDropdown } from "react-icons/io";
-
-// Mock data for video cards with YouTube URLs and creation dates
-const videoCards = [
-  {
-    id: 1,
-    title: 'Property Listing Video',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
-    createdAt: '2024-01-15',
-  },
-  {
-    id: 2,
-    title: 'Neighborhood Tour',
-    youtubeUrl: 'https://www.youtube.com/watch?v=jNQXAC9IVRw',
-    thumbnail: 'https://img.youtube.com/vi/jNQXAC9IVRw/hqdefault.jpg',
-    createdAt: '2024-01-20',
-  },
-  {
-    id: 3,
-    title: 'Agent Introduction',
-    youtubeUrl: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
-    thumbnail: 'https://img.youtube.com/vi/9bZkp7q19f0/hqdefault.jpg',
-    createdAt: '2024-01-10',
-  },
-  {
-    id: 4,
-    title: 'Video Production Guide',
-    youtubeUrl: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
-    thumbnail: 'https://img.youtube.com/vi/kJQP7kiw5Fk/hqdefault.jpg',
-    createdAt: '2024-01-25',
-  },
-  {
-    id: 5,
-    title: 'Property Showcase',
-    youtubeUrl: 'https://www.youtube.com/watch?v=ZZ5LpwO-An4',
-    thumbnail: 'https://img.youtube.com/vi/ZZ5LpwO-An4/hqdefault.jpg',
-    createdAt: '2024-01-05',
-  },
-  {
-    id: 6,
-    title: 'Mobile App Demo',
-    youtubeUrl: 'https://www.youtube.com/watch?v=YQHsXMglC9A',
-    thumbnail: 'https://img.youtube.com/vi/YQHsXMglC9A/hqdefault.jpg',
-    createdAt: '2024-01-30',
-  },
-  {
-    id: 7,
-    title: 'Sold Property Highlight',
-    youtubeUrl: 'https://www.youtube.com/watch?v=JGwWNGJdvx8',
-    thumbnail: 'https://img.youtube.com/vi/JGwWNGJdvx8/hqdefault.jpg',
-    createdAt: '2024-01-12',
-  },
-  {
-    id: 8,
-    title: 'Digital Marketing',
-    youtubeUrl: 'https://www.youtube.com/watch?v=OPf0YbXqDm0',
-    thumbnail: 'https://img.youtube.com/vi/OPf0YbXqDm0/hqdefault.jpg',
-    createdAt: '2024-01-18',
-  },
-  {
-    id: 9,
-    title: 'Client Testimonial',
-    youtubeUrl: 'https://www.youtube.com/watch?v=U9t-slLl30E',
-    thumbnail: 'https://img.youtube.com/vi/U9t-slLl30E/hqdefault.jpg',
-    createdAt: '2024-01-22',
-  }
-]
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 
 type SortOrder = 'newest' | 'oldest'
 
 type VideoCard = {
-  id: number
+  id: string
+  videoId: string
   title: string
-  youtubeUrl: string
-  thumbnail: string
+  status: 'processing' | 'ready' | 'failed'
   createdAt: string
+  updatedAt: string
+  downloadUrl?: string | null
+  metadata?: {
+    duration?: number
+    size?: number
+    format?: string
+  }
+  error?: string
 }
 
 interface PreviousVideosGalleryProps {
@@ -87,32 +29,110 @@ interface PreviousVideosGalleryProps {
 }
 
 export default function PreviousVideosGallery({ className }: PreviousVideosGalleryProps) {
-  const [imageErrors, setImageErrors] = useState<Set<number>>(new Set())
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [selectedVideoForCreation, setSelectedVideoForCreation] = useState<string>('')
   const [selectedVideoData, setSelectedVideoData] = useState<{ title: string; youtubeUrl: string; thumbnail: string } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortOrder, setSortOrder] = useState<SortOrder>('newest')
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false)
+  
+  // State for API data
+  const [videos, setVideos] = useState<VideoCard[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [stats, setStats] = useState({
+    totalCount: 0,
+    readyCount: 0,
+    processingCount: 0,
+    failedCount: 0
+  })
+
+  // Get access token from Redux store
+  const accessToken = useSelector((state: RootState) => state.user.accessToken)
+
+  // Fetch videos from API
+  const fetchVideos = async () => {
+    if (!accessToken) {
+      setError('Authentication required')
+      setLoading(false)
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+
+      const response = await fetch('/api/auth/video/gallery', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to fetch videos')
+      }
+
+      if (result.success) {
+        setVideos(result.data.videos)
+        setStats({
+          totalCount: result.data.totalCount,
+          readyCount: result.data.readyCount,
+          processingCount: result.data.processingCount,
+          failedCount: result.data.failedCount
+        })
+      } else {
+        throw new Error(result.message || 'Failed to fetch videos')
+      }
+    } catch (err: any) {
+      console.error('Error fetching videos:', err)
+      setError(err.message || 'Failed to fetch videos')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch videos on component mount and when access token changes
+  useEffect(() => {
+    fetchVideos()
+  }, [accessToken])
 
   const handleViewVideo = (video: VideoCard) => {
+    console.log('Video data for viewing:', {
+      status: video.status,
+      downloadUrl: video.downloadUrl,
+      title: video.title,
+      videoId: video.videoId
+    })
+
+    if (video.status !== 'ready') {
+      console.log('Video not ready for viewing - status:', video.status)
+      return
+    }
+
+    if (!video.downloadUrl) {
+      console.log('Video not ready for viewing - no download URL')
+      return
+    }
+
+    // console.log('Opening video in modal:', video.downloadUrl)
+    
     setSelectedVideoForCreation(video.title)
     setSelectedVideoData({
       title: video.title,
-      youtubeUrl: video.youtubeUrl,
-      thumbnail: video.thumbnail
+      youtubeUrl: video.downloadUrl, // Use the S3 download URL
+      thumbnail: '' // No thumbnail needed
     })
     setIsCreateModalOpen(true)
-  }
-
-  const handleImageError = (videoId: number) => {
-    setImageErrors(prev => new Set(prev).add(videoId))
   }
 
   // Filter and sort videos based on search query and sort order
   const filteredAndSortedVideos = useMemo(() => {
     // Filter by search query
-    const filtered = videoCards.filter(video =>
+    const filtered = videos.filter(video =>
       video.title.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
@@ -127,15 +147,85 @@ export default function PreviousVideosGallery({ className }: PreviousVideosGalle
         return dateA - dateB // Oldest first
       }
     })
-  }, [searchQuery, sortOrder])
+  }, [videos, searchQuery, sortOrder])
 
   const handleSortChange = (newSortOrder: SortOrder) => {
     setSortOrder(newSortOrder)
     setIsSortDropdownOpen(false)
   }
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'ready':
+        return 'text-green-600'
+      case 'processing':
+        return 'text-yellow-600'
+      case 'failed':
+        return 'text-red-600'
+      default:
+        return 'text-gray-600'
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'ready':
+        return 'Ready'
+      case 'processing':
+        return 'Processing'
+      case 'failed':
+        return 'Failed'
+      default:
+        return 'Unknown'
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) {
+        return 'Invalid Date'
+      }
+      return date.toLocaleDateString()
+    } catch {
+      return 'Invalid Date'
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className={`w-full ${className}`}>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5046E5] mx-auto mb-4"></div>
+            <p className="text-gray-500 text-lg">Loading your videos...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className={`w-full ${className}`}>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <p className="text-red-500 text-lg mb-4">{error}</p>
+            <button
+              onClick={fetchVideos}
+              className="bg-[#5046E5] text-white px-6 py-2 rounded-full hover:bg-[#4338CA] transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={`w-full ${className}`}>
+
       {/* Search, Sort Controls and Create Button */}
       <div className="flex flex-col md:flex-row md:justify-between justify-end gap-4 mb-8">
         {/* Left side: Search Bar */}
@@ -157,8 +247,24 @@ export default function PreviousVideosGallery({ className }: PreviousVideosGalle
           />
         </div>
 
-        {/* Right side: Sort Dropdown and Create Button */}
+        {/* Right side: Sort Dropdown, Refresh Button and Create Button */}
         <div className="flex gap-4 justify-end">
+          {/* Refresh Button */}
+          {/* <button
+            onClick={fetchVideos}
+            disabled={loading}
+            className="px-4 py-[7.4px] bg-[#5046E5] text-white rounded-[39px] transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] flex items-center gap-2 min-w-[120px] justify-center text-[20px] font-semibold hover:bg-[#4338CA] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 4V10H4.58152M19.9381 11C19.446 7.05369 16.0796 4 12 4C8.64262 4 5.76829 6.06817 4.58152 9M4.58152 9H10M20 20V14H19.4185M19.4185 14C18.2317 16.9318 15.3574 19 12 19C7.92038 19 4.55399 15.9463 4.06189 12M19.4185 14H14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+            Refresh
+          </button> */}
+
           {/* Sort Dropdown */}
           <div className="relative">
           <button
@@ -215,26 +321,39 @@ export default function PreviousVideosGallery({ className }: PreviousVideosGalle
           filteredAndSortedVideos.map((video) => (
           <div
             key={video.id}
-            className="bg-[#EEEEEE] rounded-[12px] overflow-hidden transition-all duration-300 group min-h-[275px]"
+            className="bg-[#EEEEEE] rounded-[12px] overflow-hidden transition-all duration-300 group min-h-[200px]"
           >
-            {/* Thumbnail Container */}
-             <div className="relative aspect-video max-h-[165px] w-full bg-[#EEEEEE] overflow-visible px-3 pt-3 rounded-[8px]">              
-               {/* YouTube Thumbnail */}
-                {imageErrors.has(video.id) ? (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center rounded-[6px]">
-                    <div className="text-gray-400 text-sm">Video Thumbnail</div>
+            {/* Video Player Container */}
+            <div className="relative aspect-video max-h-[200px] w-full bg-[#EEEEEE] px-3 pt-3 rounded-[8px]">              
+              {/* Video Player */}
+              {video.status === 'ready' && video.downloadUrl ? (
+                <video 
+                  src={video.downloadUrl}
+                  className="w-full h-[200px] object-cover rounded-[6px]"
+                  preload="metadata"
+                  poster=""
+                  onError={(e) => console.error('Video load error:', e)}
+                >
+                  Your browser does not support the video tag.
+                </video>
+              ) : (
+                <div className="w-full h-[200px] bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center rounded-[6px]">
+                  <div className="text-center">
+                    <div className="text-gray-400 text-sm mb-2">
+                      {video.status === 'processing' ? 'Processing...' : 
+                       video.status === 'failed' ? 'Failed to load' : 
+                       video.status === 'ready' && !video.downloadUrl ? 'No download URL' : 'Video not ready'}
+                    </div>
+                    {video.status === 'processing' && (
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#5046E5] mx-auto"></div>
+                    )}
+                    {video.status === 'ready' && !video.downloadUrl && (
+                      <div className="text-red-400 text-xs">Missing download URL</div>
+                    )}
                   </div>
-                ) : (
-                  <Image 
-                    src={video.thumbnail} 
-                    alt={video.title}
-                    width={400}
-                    height={250}
-                    className="w-full h-[165px] object-cover rounded-[6px]"
-                    onError={() => handleImageError(video.id)}
-                  />
-                )}
-             </div>
+                </div>
+              )}
+            </div>
 
             {/* Content */}
             <div className="p-4">
@@ -243,13 +362,18 @@ export default function PreviousVideosGallery({ className }: PreviousVideosGalle
                 {video.title}
               </h3>
 
-                                 {/* View Video Button */}
-                                 <button
-                   onClick={() => handleViewVideo(video)}
-                   className="w-full bg-[#5046E5] text-white py-[3px] px-4 rounded-full font-semibold text-[16px] hover:bg-transparent hover:text-[#5046E5] border-2 border-[#5046E5] transition-colors duration-300 flex items-center justify-center gap-2 group/btn cursor-pointer"
-                 >
-                   View Video
-                 </button>
+              {/* View Video Button */}
+              <button
+                onClick={() => handleViewVideo(video)}
+                disabled={video.status !== 'ready'}
+                className={`w-full py-[3px] px-4 rounded-full font-semibold text-[16px] transition-colors duration-300 flex items-center justify-center gap-2 group/btn cursor-pointer ${
+                  video.status === 'ready' 
+                    ? 'bg-[#5046E5] text-white hover:bg-transparent hover:text-[#5046E5] border-2 border-[#5046E5]' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed border-2 border-gray-300'
+                }`}
+              >
+                {video.status === 'ready' ? 'View Video' : getStatusText(video.status)}
+              </button>
             </div>
           </div>
           ))
@@ -264,15 +388,14 @@ export default function PreviousVideosGallery({ className }: PreviousVideosGalle
         />
       )}
 
-
-                       {/* Create Video Modal */}
-        <CreateVideoModal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-          videoTitle={selectedVideoForCreation}
-          startAtComplete={true}
-          videoData={selectedVideoData}
-        />
-      </div>
-    )
-  }
+      {/* Create Video Modal */}
+      <CreateVideoModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        videoTitle={selectedVideoForCreation}
+        startAtComplete={true}
+        videoData={selectedVideoData}
+      />
+    </div>
+  )
+}

@@ -1,12 +1,15 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Check, AlertCircle } from 'lucide-react'
+import { useDispatch, useSelector } from 'react-redux'
+import { AppDispatch, RootState } from '@/store'
+import { setVideoLoading, setVideoError, createVideoRequest, clearVideoError, VideoRequest } from '@/store/slices/videoSlice'
 import CreateVideoModal from './create-video-modal'
-import { sanitizeInput, RateLimiter, CSRFProtection } from '@/lib/utils'
+import { sanitizeInput, RateLimiter } from '@/lib/utils'
 import { IoMdArrowDropdown } from "react-icons/io";
 
 // Zod validation schema
@@ -55,25 +58,21 @@ type CreateVideoFormData = z.infer<typeof createVideoSchema>
 
 // Dropdown options
 const promptOptions = [
-  { value: 'property-listing', label: 'Property Listing Video' },
-  { value: 'market-update', label: 'Market Update Video' },
-  { value: 'neighborhood-tour', label: 'Neighborhood Tour Video' },
-  { value: 'buyer-guide', label: 'Buyer Guide Video' },
-  { value: 'seller-guide', label: 'Seller Guide Video' }
+  { value: 'Shawheen V1', label: 'Shawheen V1' },
 ]
 
 const avatarOptions = [
-  { value: 'professional-male', label: 'Professional Male' },
-  { value: 'professional-female', label: 'Professional Female' },
-  { value: 'casual-male', label: 'Casual Male' },
-  { value: 'casual-female', label: 'Casual Female' }
+  { value: 'Gorilla-1', label: 'Gorilla 1' },
+  { value: 'Shawheen', label: 'Shawheen' },
+  { value: 'Verified HeyGen Avatar', label: 'Verified HeyGen Avatar' },
+  { value: 'Varied', label: 'Varied' }
 ]
 
 const positionOptions = [
-  { value: 'real-estate-agent', label: 'Real Estate Agent' },
-  { value: 'loan-officer', label: 'Loan Officer' },
-  { value: 'broker', label: 'Broker' },
-  { value: 'property-manager', label: 'Property Manager' }
+  { value: 'Real Estate Agent', label: 'Real Estate Agent' },
+  { value: 'Real Estate Broker', label: 'Real Estate Broker' },
+  { value: 'Loan Broker', label: 'Loan Broker' },
+  { value: 'Loan Officer', label: 'Loan Officer' }
 ]
 
 interface CreateVideoFormProps {
@@ -81,21 +80,26 @@ interface CreateVideoFormProps {
 }
 
 export default function CreateVideoForm({ className }: CreateVideoFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const dispatch = useDispatch<AppDispatch>()
+  const { isLoading, error } = useSelector((state: RootState) => state.video)
+  
   const [showSuccessToast] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [formDataForModal, setFormDataForModal] = useState<CreateVideoFormData | null>(null)
+  const [webhookResponse, setWebhookResponse] = useState<{
+    prompt?: string
+    description?: string
+    conclusion?: string
+    company_name?: string
+    social_handles?: string
+    license?: string
+    avatar?: string
+    email?: string
+  } | null>(null)
 
   // Security features
   const rateLimiter = useRef(new RateLimiter(3, 60000)) // 3 video requests per minute
-  const [csrfToken, setCsrfToken] = useState<string>('')
-  
-  useEffect(() => {
-    // Generate CSRF token when component mounts
-    const token = CSRFProtection.generateToken()
-    setCsrfToken(token)
-  }, [])
 
   const {
     register,
@@ -119,13 +123,7 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
       return
     }
 
-    // CSRF token validation
-    if (!CSRFProtection.validateToken(csrfToken)) {
-      alert('Security token invalid. Please refresh and try again.')
-      return
-    }
-
-    setIsSubmitting(true)
+    dispatch(setVideoLoading(true))
     try {
       // Sanitize all input data before processing
       const sanitizedData: CreateVideoFormData = {
@@ -146,20 +144,81 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
         position: data.position
       }
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      console.log('Sanitized form data:', sanitizedData)
+      // Make API call
+      const response = await fetch('/api/auth/create-video', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(sanitizedData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || 'Failed to create video');
+      }
+
+      const result = await response.json();
       
-      // Store form data and open modal
-      setFormDataForModal(data)
+        // Extract webhook response data
+        const webhookData = result.data.webhookResponse;
+        console.log('Raw webhook response data:', webhookData);
+       
+       // Use the original form data for fields that weren't returned by webhook
+       const decodedResponse = {
+        prompt: decodeURIComponent(webhookData?.hook || ''),
+        description: decodeURIComponent(webhookData?.body || ''),
+        conclusion: decodeURIComponent(webhookData?.conclusion || ''),
+        company_name: webhookData?.company_name || webhookData?.companyName || data.companyName,
+        social_handles: webhookData?.social_handles || webhookData?.socialHandles || data.socialHandles,
+        license: webhookData?.license || data.license,
+        avatar: webhookData?.avatar || data.avatar,
+        email: webhookData?.email || data.email
+        }
+       console.log('Setting webhook response:', decodedResponse);
+       setWebhookResponse(decodedResponse)
+      
+      // Create video request object for Redux
+      const videoRequest: VideoRequest = {
+        requestId: result.data.requestId,
+        prompt: data.prompt,
+        avatar: data.avatar,
+        name: data.name,
+        position: data.position,
+        companyName: data.companyName,
+        license: data.license,
+        tailoredFit: data.tailoredFit,
+        socialHandles: data.socialHandles,
+        videoTopic: data.videoTopic,
+        topicKeyPoints: data.topicKeyPoints,
+        city: data.city,
+        preferredTone: data.preferredTone,
+        callToAction: data.callToAction,
+        email: data.email,
+        timestamp: result.data.timestamp,
+        status: result.data.status,
+        webhookResponse: result.data.webhookResponse
+      }
+      
+      // Store in Redux
+      dispatch(createVideoRequest(videoRequest))
+      
+      // Open modal with webhook response data
       setIsModalOpen(true)
-      
-      // Reset form
-      reset()
-    } catch (error) {
+       
+      // Clear any previous errors
+      dispatch(clearVideoError())
+       
+        // Reset form after modal is opened
+        setTimeout(() => {
+          reset()
+          // Don't clear webhookResponse here - let the modal use it
+        }, 100)
+    } catch (error: any) {
       console.error('Error submitting form:', error)
+      dispatch(setVideoError(error.message || 'Failed to create video'))
     } finally {
-      setIsSubmitting(false)
+      dispatch(setVideoLoading(false))
     }
   }
 
@@ -198,15 +257,14 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
         <button
           type="button"
           onClick={() => handleDropdownToggle(field)}
-                     onBlur={() => {
-             // Small delay to allow dropdown selection to complete
-             setTimeout(() => {
-               const currentValue = watch(field)
-               if ((!currentValue || currentValue.trim() === '') && openDropdown === field) {
-                 setValue(field, '', { shouldValidate: true })
-               }
-             }, 100)
-           }}
+          onBlur={() => {
+            setTimeout(() => {
+              const currentValue = watch(field)
+              if ((!currentValue || currentValue.trim() === '') && openDropdown === field) {
+                setValue(field, '', { shouldValidate: true })
+              }
+            }, 100)
+          }}
           className={`w-full px-4 py-[10.5px] text-[18px] font-normal bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-left transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white flex items-center justify-between cursor-pointer ${
             hasError ? 'ring-2 ring-red-500' : ''
           } ${selectedOption ? 'text-gray-800 bg-[#F5F5F5]' : 'text-[#11101066]'}`}
@@ -296,8 +354,20 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-7">
-        {/* CSRF Token (hidden) */}
-        <input type="hidden" name="csrf_token" value={csrfToken} />
+        
+        
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              <div>
+                <h3 className="text-red-800 font-semibold">Error</h3>
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Row 1 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -413,12 +483,12 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
         <div className="flex justify-center pt-4">
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isLoading}
             className="w-full max-w-full px-8 py-[12.4px] bg-[#5046E5] text-white rounded-full font-semibold text-lg hover:bg-transparent hover:text-[#5046E5] border-2 border-[#5046E5] transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-[#5046E5]/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 cursor-pointer"
           >
-            {isSubmitting ? (
+            {isLoading ? (
               <>
-                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
@@ -447,12 +517,16 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
         />
       )}
 
-      {/* Create Video Modal */}
-      <CreateVideoModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        videoTitle={formDataForModal?.prompt || 'Custom Video'}
-      />
+             {/* Create Video Modal */}
+       <CreateVideoModal
+         isOpen={isModalOpen}
+         onClose={() => {
+           setIsModalOpen(false)
+           setWebhookResponse(null) // Clear webhookResponse when modal closes
+         }}
+         videoTitle={formDataForModal?.prompt || 'Custom Video'}
+         webhookResponse={webhookResponse}
+       />
     </div>
   )
 }

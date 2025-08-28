@@ -1,18 +1,20 @@
 'use client'
 
 import SigninModal from "./signin-modal";
+import ForgotPasswordModal from "./forgot-password-modal";
 import { useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAppSelector } from "@/store/hooks";
 import { smoothScrollTo } from "@/lib/utils";
 
 export default function ActionCard(){
     const [isSigninModalOpen, setIsSigninModalOpen] = useState(false);
-    const { isLoggedIn } = useAuth();
+    const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
+    const { isAuthenticated } = useAppSelector((state) => state.user);
 
 
       const handleGetStartedClick = (e: React.MouseEvent) => {
-    if (isLoggedIn) {
+    if (isAuthenticated) {
       window.location.href = '/create-video';
     } else {
       e.preventDefault();
@@ -40,7 +42,7 @@ export default function ActionCard(){
                             >
                                 Watch Demo
                             </button> */}
-                            {isLoggedIn ? (
+                            {isAuthenticated ? (
                                 <Link
                                 href="/create-video"
                                 className="px-[28px] py-[13.2px] bg-[#5046E5] text-white rounded-full font-semibold hover:bg-transparent border-[#5046E5] hover:text-white hover:border-white/30 border transition-all duration-300 cursor-pointer"
@@ -63,6 +65,13 @@ export default function ActionCard(){
             <SigninModal
                 isOpen={isSigninModalOpen}
                 onClose={() => setIsSigninModalOpen(false)}
+                onOpenForgotPassword={() => setIsForgotPasswordModalOpen(true)}
+            />
+
+            <ForgotPasswordModal
+                isOpen={isForgotPasswordModalOpen}
+                onClose={() => setIsForgotPasswordModalOpen(false)}
+                onOpenSignin={() => setIsSigninModalOpen(true)}
             />
         </div>
     )

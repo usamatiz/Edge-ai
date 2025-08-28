@@ -9,8 +9,12 @@ import { useAnalytics } from "@/hooks/use-analytics";
 import { useActiveSection } from "@/hooks/use-active-section";
 import SignupModal from "@/components/ui/signup-modal";
 import SigninModal from "@/components/ui/signin-modal";
+import ForgotPasswordModal from "@/components/ui/forgot-password-modal";
+import EmailVerificationModal from "@/components/ui/email-verification-modal";
 
-import { useAuth } from "@/contexts/AuthContext";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import { clearUser } from "@/store/slices/userSlice";
+import { useRouter } from "next/navigation";
 
 interface MobileSidebarProps {
   isOpen: boolean;
@@ -84,7 +88,12 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const { trackNavigation, trackButtonClick } = useAnalytics();
   const [isSignupModalOpen, setIsSignupModalOpen] = React.useState(false);
   const [isSigninModalOpen, setIsSigninModalOpen] = React.useState(false);
-  const { isLoggedIn, currentUser, logout } = useAuth();
+  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = React.useState(false);
+  const [isEmailVerificationModalOpen, setIsEmailVerificationModalOpen] = React.useState(false);
+  const [verificationEmail, setVerificationEmail] = React.useState('');
+  const { isAuthenticated, user: currentUser } = useAppSelector((state) => state.user);
+  const dispatch = useAppDispatch();
+  const router = useRouter();
   
   // Track active section based on scroll position (only on home page)
   const sectionIds = ['getting-started', 'how-it-works', 'benefits', 'pricing', 'faq', 'contact'];
@@ -291,7 +300,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
               })}
 
               {/* Account Navigation Items - Only show when logged in */}
-              {isLoggedIn && (
+              {isAuthenticated && (
                 <>
                   <Link
                     href="/account"
@@ -407,7 +416,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
         {/* Action Buttons Section - Fixed at Bottom */}
         <div className="flex-shrink-0 p-6 border-t border-gray-200/50 bg-gradient-to-t from-gray-50/80 to-transparent">
           <div className="space-y-4">
-            {isLoggedIn ? (
+            {isAuthenticated ? (
               <div className="space-y-4">
                 {/* User Info */}
                 <div className="px-2">
@@ -425,9 +434,11 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                 {/* Logout Button */}
                 <button
                   onClick={() => {
-                    logout();
+                    dispatch(clearUser());
                     onClose();
                     trackButtonClick("logout", "mobile_sidebar", "logout");
+                    // Redirect to home page after logout
+                    router.push('/');
                   }}
                   className="w-full inline-flex items-center justify-center px-6 py-4 text-base font-medium text-red-600 border-2 border-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all duration-300 focus:outline-none"
                   aria-label="Log out of your account"
@@ -475,6 +486,17 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
         isOpen={isSignupModalOpen}
         onClose={() => setIsSignupModalOpen(false)}
         onOpenSignin={() => setIsSigninModalOpen(true)}
+        onRegistrationSuccess={(email) => {
+          setVerificationEmail(email);
+          setIsEmailVerificationModalOpen(true);
+        }}
+      />
+
+      {/* Email Verification Modal */}
+      <EmailVerificationModal
+        isOpen={isEmailVerificationModalOpen}
+        onClose={() => setIsEmailVerificationModalOpen(false)}
+        email={verificationEmail}
       />
 
       {/* Signin Modal */}
@@ -482,6 +504,14 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
         isOpen={isSigninModalOpen}
         onClose={() => setIsSigninModalOpen(false)}
         onOpenSignup={() => setIsSignupModalOpen(true)}
+        onOpenForgotPassword={() => setIsForgotPasswordModalOpen(true)}
+      />
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordModalOpen}
+        onClose={() => setIsForgotPasswordModalOpen(false)}
+        onOpenSignin={() => setIsSigninModalOpen(true)}
       />
     </>
   );

@@ -7,8 +7,7 @@ export function useActiveSection(sectionIds: string[], offset: number = 100) {
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
       const windowHeight = window.innerHeight;
-      const viewportCenter = scrollPosition + (windowHeight / 2);
-      
+        
       // Find which section is currently centered in the viewport
       let currentSection = '';
       
@@ -18,7 +17,7 @@ export function useActiveSection(sectionIds: string[], offset: number = 100) {
         
         if (element) {
           const elementTop = element.offsetTop;
-          const elementBottom = elementTop + element.offsetHeight;
+          // const elementBottom = elementTop + element.offsetHeight;
           const elementCenter = elementTop + (element.offsetHeight / 2);
           
           // Check if the section is actually visible in the viewport

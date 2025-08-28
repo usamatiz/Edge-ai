@@ -10,3 +10,6 @@ export { default as ProfileDropdown } from "./profile-dropdown";
 export { default as CustomDropdown } from "./custom-dropdown";
 export { default as ProfileInfoSection } from "./profile-info-section";
 export { default as PaymentDetailsSection } from "./payment-details-section";
+export { default as AuthLoader } from "./auth-loader";
+export { default as EmailVerificationModal } from "./email-verification-modal";
+export { default as VideoGallery } from "./video-gallery";

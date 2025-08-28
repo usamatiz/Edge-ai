@@ -102,6 +102,7 @@ p, span, div, a, button, input, textarea, select, label {
   width: 100%;
 }
 
+
 /* Screen reader only utility */
 .sr-only {
   position: absolute;
@@ -159,6 +160,10 @@ html {
    background: conic-gradient(#0000 10%,#5046E5);
    -webkit-mask: radial-gradient(farthest-side,#0000 calc(100% - 22px),#000 0);
    animation: spinner-zp9dbg 1s infinite linear;
+}
+
+button{
+  cursor: pointer !important;
 }
 
 #contact {

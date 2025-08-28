@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAppSelector, useAppDispatch } from '@/store/hooks'
+import { clearUser, setLoading } from '@/store/slices/userSlice'
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -11,7 +13,9 @@ interface ProfileDropdownProps {
 }
 
 export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDropdownProps) {
-  const { currentUser, logout } = useAuth()
+  const { user: currentUser } = useAppSelector((state) => state.user)
+  const dispatch = useAppDispatch()
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -50,10 +54,43 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
     }
   }, [isOpen])
 
-  const handleLogout = () => {
-    logout()
-    setIsOpen(false)
-    if (onClose) onClose()
+  const handleLogout = async () => {
+    try {
+      // Set loading state to show loader during logout
+      dispatch(setLoading(true))
+      
+      // Close dropdown first
+      setIsOpen(false)
+      if (onClose) onClose()
+      
+      // Call logout API to invalidate token on server
+      const accessToken = localStorage.getItem('accessToken')
+      if (accessToken) {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        })
+      }
+      
+      // Clear user data from Redux store
+      dispatch(clearUser())
+      
+      // Redirect to home page
+      router.push('/')
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Even if API call fails, clear local data
+      dispatch(clearUser())
+      router.push('/')
+    } finally {
+      // Set loading to false after a short delay to ensure smooth transition
+      setTimeout(() => {
+        dispatch(setLoading(false))
+      }, 500)
+    }
   }
 
   const toggleDropdown = () => {
@@ -87,7 +124,7 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
         ref={buttonRef}
         onClick={toggleDropdown}
         className={cn(
-          "flex items-center justify-center w-[160px] cursor-pointer gap-2 px-2 py-[7.4px] rounded-full border-2 border-[#5F5F5F] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5046E5] focus-visible:ring-offset-2",
+          "flex items-center justify-center w-[200px] cursor-pointer gap-2 px-2 py-[7.4px] rounded-full border-2 border-[#5F5F5F] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5046E5] focus-visible:ring-offset-2",
           isMobile
             ? "w-full justify-between bg-gray-100 hover:bg-gray-200 px-4 py-3"
             : "hover:bg-gray-100 border-2 border-[#5F5F5F] hover:border-gray-300"
