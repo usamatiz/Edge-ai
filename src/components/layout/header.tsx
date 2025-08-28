@@ -10,8 +10,10 @@ import { useAnalytics } from "@/hooks/use-analytics";
 import { useActiveSection } from "@/hooks/use-active-section";
 import SignupModal from "@/components/ui/signup-modal";
 import SigninModal from "@/components/ui/signin-modal";
+import ForgotPasswordModal from "@/components/ui/forgot-password-modal";
+import EmailVerificationModal from "@/components/ui/email-verification-modal";
 import ProfileDropdown from "@/components/ui/profile-dropdown";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAppSelector } from "@/store/hooks";
 
 // Throttle function for scroll performance
 function throttle<T extends (...args: unknown[]) => unknown>(
@@ -42,9 +44,14 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isSignupModalOpen, setIsSignupModalOpen] = React.useState(false);
   const [isSigninModalOpen, setIsSigninModalOpen] = React.useState(false);
-  const pathname = usePathname();
+  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = React.useState(false);
+  const [isEmailVerificationModalOpen, setIsEmailVerificationModalOpen] = React.useState(false);
+  const [verificationEmail, setVerificationEmail] = React.useState('');
+    const pathname = usePathname();
   const { trackNavigation, trackButtonClick } = useAnalytics();
-  const { isLoggedIn } = useAuth();
+  
+  // Use Redux for authentication state
+  const { isAuthenticated } = useAppSelector((state) => state.user);
   
   // Track active section based on scroll position (only on home page)
   const sectionIds = ['getting-started', 'how-it-works', 'benefits', 'pricing', 'faq', 'contact'];
@@ -168,7 +175,7 @@ export function Header() {
 
             {/* Desktop Action Buttons */}
             <div className="hidden lg:flex items-center space-x-3">
-              {isLoggedIn ? (
+              {isAuthenticated ? (
                 <ProfileDropdown />
               ) : (
                 <>
@@ -254,6 +261,17 @@ export function Header() {
         isOpen={isSignupModalOpen}
         onClose={() => setIsSignupModalOpen(false)}
         onOpenSignin={() => setIsSigninModalOpen(true)}
+        onRegistrationSuccess={(email) => {
+          setVerificationEmail(email);
+          setIsEmailVerificationModalOpen(true);
+        }}
+      />
+
+      {/* Email Verification Modal */}
+      <EmailVerificationModal
+        isOpen={isEmailVerificationModalOpen}
+        onClose={() => setIsEmailVerificationModalOpen(false)}
+        email={verificationEmail}
       />
 
       {/* Signin Modal */}
@@ -261,6 +279,14 @@ export function Header() {
         isOpen={isSigninModalOpen}
         onClose={() => setIsSigninModalOpen(false)}
         onOpenSignup={() => setIsSignupModalOpen(true)}
+        onOpenForgotPassword={() => setIsForgotPasswordModalOpen(true)}
+      />
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordModalOpen}
+        onClose={() => setIsForgotPasswordModalOpen(false)}
+        onOpenSignin={() => setIsSigninModalOpen(true)}
       />
     </>
   );

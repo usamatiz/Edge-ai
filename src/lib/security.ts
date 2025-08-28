@@ -284,15 +284,41 @@ export class CSRFProtection {
   private static readonly TOKEN_KEY = 'csrf_token';
   
   /**
-   * Generate a new CSRF token
-   * @returns CSRF token string
+   * Generate a new CSRF token from server
+   * @returns Promise<CSRF token string>
    */
-  static generateToken(): string {
-    const token = generateSecureRandomString(32);
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem(this.TOKEN_KEY, token);
+  static async generateToken(): Promise<string> {
+    try {
+      const response = await fetch('/api/csrf-token', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate CSRF token');
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.data.token) {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(this.TOKEN_KEY, data.data.token);
+        }
+        return data.data.token;
+      } else {
+        throw new Error('Invalid CSRF token response');
+      }
+    } catch (error) {
+      console.error('CSRF token generation failed:', error);
+      // Fallback to client-side generation for development
+      const token = generateSecureRandomString(32);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(this.TOKEN_KEY, token);
+      }
+      return token;
     }
-    return token;
   }
   
   /**
@@ -307,9 +333,9 @@ export class CSRFProtection {
   }
   
   /**
-   * Validate a CSRF token
+   * Validate a CSRF token (client-side validation for UI feedback)
    * @param token - Token to validate
-   * @returns true if valid, false otherwise
+   * @returns true if token exists, false otherwise
    */
   static validateToken(token: string): boolean {
     const storedToken = this.getToken();

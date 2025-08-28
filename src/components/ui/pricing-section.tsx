@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { Check, Zap, Users, BarChart3 } from 'lucide-react';
 import Image from 'next/image';
 import SigninModal from './signin-modal';
-import { useAuth } from '@/contexts/AuthContext';
+import ForgotPasswordModal from './forgot-password-modal';
+import { useAppSelector } from '@/store/hooks';
 import { smoothScrollTo } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -29,10 +30,11 @@ interface EnterprisePlan {
 
 const PricingSection = () => {
   const [isSigninModalOpen, setIsSigninModalOpen] = useState(false);
-  const { isLoggedIn } = useAuth();
+  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
+  const { isAuthenticated } = useAppSelector((state) => state.user);
 
   const handleGetStartedClick = (e: React.MouseEvent) => {
-    if (isLoggedIn) {
+    if (isAuthenticated) {
       window.location.href = '/create-video';
     } else {
       e.preventDefault();
@@ -48,7 +50,7 @@ const PricingSection = () => {
       period: '/one-time',
       description: 'Ideal for new users who want to manage basic finances at no cost.',
       features: [
-        '1 AI video',
+        '1 AI video', 
         '1 Avatar',
         'Basic Customization',
         '24-48 hr email support'
@@ -180,7 +182,7 @@ const PricingSection = () => {
                   </div>
 
                   {/* CTA Button */}
-                  {isLoggedIn ? (
+                  {isAuthenticated ? (
                     <Link href="/create-video" className="w-fit py-[11.6px] px-[28.3px] rounded-[39px] transition-all duration-300 bg-[#5046E5] text-white hover:bg-transparent border border-[#5046E5] hover:text-white text-[18px] leading-[20px] font-medium cursor-pointer">
                       {plan.buttonText}
                     </Link>
@@ -234,7 +236,7 @@ const PricingSection = () => {
 
               {/* Enterprise Button */}
               <div className="lg:flex-shrink-0">
-                {isLoggedIn ? (
+                {isAuthenticated ? (
                   <Link href="/create-video" className="w-fit py-[11.6px] px-[28.3px] rounded-[39px] transition-all duration-300 bg-[#5046E5] text-white hover:bg-transparent border border-[#5046E5] hover:text-white text-[18px] leading-[20px] font-medium cursor-pointer">
                     {enterprisePlan.buttonText}
                   </Link>
@@ -257,6 +259,13 @@ const PricingSection = () => {
       <SigninModal
         isOpen={isSigninModalOpen}
         onClose={() => setIsSigninModalOpen(false)}
+        onOpenForgotPassword={() => setIsForgotPasswordModalOpen(true)}
+      />
+
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordModalOpen}
+        onClose={() => setIsForgotPasswordModalOpen(false)}
+        onOpenSignin={() => setIsSigninModalOpen(true)}
       />
 
       <style jsx>{`

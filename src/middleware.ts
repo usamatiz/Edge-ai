@@ -8,6 +8,13 @@ const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 60; // 60 requests per minute
 
 /**
+ * Generate a simple UUID-like string for Edge Runtime
+ */
+function generateRequestId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+/**
  * Simple rate limiting middleware
  * @param req - The incoming request
  * @returns Response if rate limited, otherwise continues
@@ -57,7 +64,7 @@ function rateLimit(req: NextRequest) {
  */
 function addSecurityHeaders(response: NextResponse) {
   // Additional security headers that might not be in next.config.ts
-  response.headers.set('X-Request-ID', crypto.randomUUID());
+  response.headers.set('X-Request-ID', generateRequestId());
   response.headers.set('X-Timestamp', new Date().toISOString());
   
   return response;
@@ -121,22 +128,50 @@ function validateRequest(req: NextRequest) {
 }
 
 /**
- * Main middleware function
+ * Check if the request should be excluded from rate limiting
  * @param req - The incoming request
+ * @returns boolean
+ */
+function shouldExcludeFromRateLimit(req: NextRequest): boolean {
+  const { pathname } = req.nextUrl;
+  
+  // Exclude video creation endpoints from rate limiting
+  const excludedPaths = [
+    '/api/auth/create-video',
+    '/api/auth/create-video/generate-video',
+    '/api/auth/video/download',
+    '/api/auth/video/gallery',
+    '/api/auth/video/status',
+    '/api/auth/video/delete'
+  ];
+  
+  return excludedPaths.some(path => pathname.startsWith(path));
+}
+
+/**
+ * Main middleware function
+ * @param req - The NextRequest
  * @returns NextResponse
  */
 export function middleware(req: NextRequest) {
-  // Validate request for suspicious patterns
-  const validationResult = validateRequest(req);
-  if (validationResult) {
-    return validationResult;
+  // Skip middleware entirely for API routes to prevent body reading issues
+  if (req.nextUrl.pathname.startsWith('/api/')) {
+    return NextResponse.next();
   }
   
-  // Apply rate limiting
-  const rateLimitResult = rateLimit(req);
-  if (rateLimitResult) {
-    return rateLimitResult;
-  }
+  // DISABLED: Validate request for suspicious patterns (for network testing)
+  // const validationResult = validateRequest(req);
+  // if (validationResult) {
+  //   return validationResult;
+  // }
+  
+  // DISABLED: Apply rate limiting (for network testing)
+  // if (!shouldExcludeFromRateLimit(req)) {
+  //   const rateLimitResult = rateLimit(req);
+  //   if (rateLimitResult) {
+  //     return rateLimitResult;
+  //   }
+  // }
   
   // Continue with the request
   const response = NextResponse.next();
@@ -158,7 +193,5 @@ export const config = {
      * - favicon.ico (favicon file)
      */
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
-    // Include API routes for rate limiting
-    '/api/:path*'
   ],
 };

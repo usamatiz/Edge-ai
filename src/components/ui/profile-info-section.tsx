@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { Eye, EyeOff, AlertCircle } from 'lucide-react'
-import { sanitizeInput } from '@/lib/utils'
+import { useState, useEffect } from 'react'
+import { Eye, EyeOff, AlertCircle, Mail, CheckCircle } from 'lucide-react'
+import { CSRFProtection, sanitizeInput } from '@/lib/utils'
+import { useAppDispatch } from '@/store/hooks'
+import { updateUser } from '@/store/slices/userSlice'
 
 interface ProfileFormData {
   firstName: string
@@ -24,24 +26,34 @@ interface ProfileInfoSectionProps {
   data: ProfileFormData
   errors: ProfileFormErrors
   onChange: (field: keyof ProfileFormData, value: string) => void
+  isEmailVerified?: boolean
 }
 
-export default function ProfileInfoSection({ data, errors, onChange }: ProfileInfoSectionProps) {
+export default function ProfileInfoSection({ data, errors, onChange, isEmailVerified = false }: ProfileInfoSectionProps) {
+  const dispatch = useAppDispatch()
   const [showPassword, setShowPassword] = useState(false)
+  const [showToast, setShowToast] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
+  const [toastType, setToastType] = useState<'success' | 'error'>('success')
+
+  // Phone number formatter - same as signup modal
+  const formatPhoneNumber = (value: string): string => {
+    const phoneNumber = value.replace(/\D/g, '')
+    const phoneNumberLength = phoneNumber.length
+
+    if (phoneNumberLength < 4) return phoneNumber
+    if (phoneNumberLength < 7) {
+      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`
+    }
+    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`
+  }
 
   const handleInputChange = (field: keyof ProfileFormData, value: string) => {
     let processedValue = value
     
     // Apply field-specific processing with enhanced security
     if (field === 'phone') {
-      const phoneNumber = value.replace(/\D/g, '')
-      const phoneNumberLength = phoneNumber.length
-      if (phoneNumberLength < 4) processedValue = phoneNumber
-      else if (phoneNumberLength < 7) {
-        processedValue = `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`
-      } else {
-        processedValue = `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`
-      }
+      processedValue = formatPhoneNumber(sanitizeInput(value, 'phone'))
     } else if (field === 'email') {
       processedValue = sanitizeInput(value, 'email')
     } else if (field === 'firstName' || field === 'lastName') {
@@ -51,6 +63,93 @@ export default function ProfileInfoSection({ data, errors, onChange }: ProfileIn
     }
 
     onChange(field, processedValue)
+  }
+
+  const showToastMessage = (message: string, type: 'success' | 'error' = 'success') => {
+    setToastMessage(message)
+    setToastType(type)
+    setShowToast(true)
+    
+    // Auto hide toast after 5 seconds
+    setTimeout(() => {
+      setShowToast(false)
+    }, 5000)
+  }
+
+  const refreshUserData = async () => {
+    try {
+      const accessToken = localStorage.getItem('accessToken')
+      if (!accessToken) return
+
+      const response = await fetch('/api/auth/me', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          // Update user data in Redux store
+          dispatch(updateUser(data.data.user))
+        }
+      }
+    } catch (error) {
+      console.error('Failed to refresh user data:', error)
+    }
+  }
+
+  // Periodically refresh user data to check for email verification status updates
+  useEffect(() => {
+    // Only refresh if email is not verified
+    if (!isEmailVerified) {
+      const interval = setInterval(() => {
+        refreshUserData()
+      }, 10000) // Check every 10 seconds
+
+      return () => clearInterval(interval)
+    }
+  }, [isEmailVerified])
+
+  // Format phone number when data changes
+  useEffect(() => {
+    if (data.phone && !data.phone.includes('(')) {
+      // If phone number doesn't have formatting, format it
+      const formattedPhone = formatPhoneNumber(data.phone)
+      if (formattedPhone !== data.phone) {
+        onChange('phone', formattedPhone)
+      }
+    }
+  }, [data.phone, onChange])
+
+  const handleResendVerification = async () => {
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': CSRFProtection.getToken() || '',
+        },
+        body: JSON.stringify({ email: data.email }),
+      })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        showToastMessage('Verification email sent successfully! Please check your inbox.', 'success')
+        
+        // Refresh user data to get the latest verification status
+        setTimeout(() => {
+          refreshUserData()
+        }, 1000) // Wait a bit for the server to process
+      } else {
+        showToastMessage(result.message || 'Failed to send verification email. Please try again.', 'error')
+      }
+    } catch (error) {
+      console.error('Error sending verification email:', error)
+      showToastMessage('Something went wrong. Please try again.', 'error')
+    }
   }
 
   return (
@@ -110,7 +209,7 @@ export default function ProfileInfoSection({ data, errors, onChange }: ProfileIn
           )}
         </div>
 
-        {/* Email */}
+        {/* Email - Read Only */}
         <div className="w-full">
           <label htmlFor="email" className="block text-base font-normal text-[#5F5F5F] mb-1">
             Email
@@ -119,14 +218,33 @@ export default function ProfileInfoSection({ data, errors, onChange }: ProfileIn
             id="email"
             type="email"
             value={data.email}
-            onChange={(e) => handleInputChange('email', e.target.value)}
+            readOnly
+            disabled
             placeholder="Enter Email"
             aria-describedby={errors.email ? 'email-error' : undefined}
             aria-invalid={!!errors.email}
-            className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
-              errors.email ? 'ring-2 ring-red-500' : ''
-            }`}
+            className="w-full px-4 py-3 bg-[#F3F4F6] border-0 rounded-[8px] text-gray-600 placeholder-[#11101066] cursor-not-allowed"
           />
+          {/* Email Verification Status */}
+          {!isEmailVerified && (
+            <div className="mt-1 flex items-center gap-1">
+              <Mail className="w-3 h-3 text-orange-500" />
+              <span className="text-xs text-orange-600">Email not verified</span>
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                className="text-xs text-[#5046E5] cursor-pointer hover:text-[#4338CA] underline font-medium transition-colors"
+              >
+                Resend verification
+              </button>
+            </div>
+          )}
+          {isEmailVerified && (
+            <div className="mt-1 flex items-center gap-1">
+              {/* <Mail className="w-3 h-3 text-green-500" /> */}
+              <span className="text-[10px] text-green-600 pl-1">Email verified</span>
+            </div>
+          )}
           {errors.email && (
             <p id="email-error" className="text-red-500 text-sm mt-1 flex items-center gap-1">
               <AlertCircle className="w-4 h-4" />
@@ -161,7 +279,7 @@ export default function ProfileInfoSection({ data, errors, onChange }: ProfileIn
         </div>
       </div>
 
-      {/* Password */}
+      {/* Password - Read Only */}
       <div className="w-full mt-6">
         <label htmlFor="password" className="block text-base font-normal text-[#5F5F5F] mb-1">
           Password
@@ -170,23 +288,26 @@ export default function ProfileInfoSection({ data, errors, onChange }: ProfileIn
           <input
             id="password"
             type={showPassword ? 'text' : 'password'}
-            value={data.password}
-            onChange={(e) => handleInputChange('password', e.target.value)}
+            value="••••••••••"
+            readOnly
+            disabled
             placeholder="**********"
             aria-describedby={errors.password ? 'password-error' : undefined}
             aria-invalid={!!errors.password}
-            className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white pr-12 ${
-              errors.password ? 'ring-2 ring-red-500' : ''
-            }`}
+            className="w-full px-4 py-3 bg-[#F3F4F6] border-0 rounded-[8px] text-gray-600 placeholder-[#11101066] cursor-not-allowed pr-12"
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute cursor-pointer right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            className="absolute cursor-pointer right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
             aria-label={showPassword ? 'Hide password' : 'Show password'}
+            disabled
           >
             {showPassword ? <EyeOff className="w-5 h-5 text-[#98A2B3]" /> : <Eye className="w-5 h-5 text-[#98A2B3]" />}
           </button>
+        </div>
+        <div className="mt-1">
+          <span className="text-xs text-gray-500">Use &quot;Forgot Password&quot; to change your password</span>
         </div>
         {errors.password && (
           <p id="password-error" className="text-red-500 text-sm mt-1 flex items-center gap-1">
@@ -195,6 +316,26 @@ export default function ProfileInfoSection({ data, errors, onChange }: ProfileIn
           </p>
         )}
       </div>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-right-2">
+          <div className={`px-4 py-3 rounded-lg shadow-lg max-w-sm ${
+            toastType === 'success' 
+              ? 'bg-green-500 text-white' 
+              : 'bg-red-500 text-white'
+          }`}>
+            <div className="flex items-center gap-2">
+              {toastType === 'success' ? (
+                <CheckCircle className="w-5 h-5" />
+              ) : (
+                <AlertCircle className="w-5 h-5" />
+              )}
+              <p className="text-sm font-medium">{toastMessage}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

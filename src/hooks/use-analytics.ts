@@ -59,7 +59,7 @@ class Analytics {
   track(event: TrackableEvent): void {
     if (!this.isEnabled) {
       // In development, just log to console
-      console.log("Analytics Event:", event);
+      // console.log("Analytics Event:", event);
       return;
     }
 

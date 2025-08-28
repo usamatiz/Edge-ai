@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { SLIDER_ITEMS, REVIEW_SLIDER_ITEMS } from "@/lib/constants";
 import { Slider } from "@/components/ui/slider";
 import VideoCard from "@/components/ui/video-card";
@@ -16,11 +17,12 @@ import PricingSection from "@/components/ui/pricing-section";
 import { smoothScrollTo } from "@/lib/utils";
 import SigninModal from "@/components/ui/signin-modal";
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAppSelector } from "@/store/hooks";
 
-export default function HomePage() {
+function HomePageContent() {
   const [isSigninModalOpen, setIsSigninModalOpen] = useState(false);
-  const { isLoggedIn } = useAuth();
+  const { isAuthenticated } = useAppSelector((state) => state.user);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -32,8 +34,25 @@ export default function HomePage() {
     }
   }, []);
 
+  // Check for showLogin parameter to automatically open login modal
+  useEffect(() => {
+    const showLogin = searchParams.get('showLogin');
+    if (showLogin === 'true') {
+      setIsSigninModalOpen(true);
+    }
+  }, [searchParams]);
+
+  // Check for email verification success
+  useEffect(() => {
+    const verified = searchParams.get('verified');
+    if (verified === 'true') {
+      // You could show a toast notification here
+      console.log('Email verified successfully!');
+    }
+  }, [searchParams]);
+
   const handleGetStartedClick = (e: React.MouseEvent) => {
-    if (isLoggedIn) {
+    if (isAuthenticated) {
       window.location.href = '/create-video';
     } else {
       e.preventDefault();
@@ -55,7 +74,7 @@ export default function HomePage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
 
-              {isLoggedIn ? (
+              {isAuthenticated ? (
               <Link href="/create-video" className="inline-flex cursor-pointer items-center justify-center px-[26.5px] py-[13.2px] text-base font-semibold bg-[#5046E5] text-white rounded-full transition-all !duration-300 hover:bg-transparent hover:text-[#5046E5] border-2 border-[#5046E5]">
                 Get Started
               </Link>
@@ -123,5 +142,24 @@ export default function HomePage() {
         onClose={() => setIsSigninModalOpen(false)}
       />
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5046E5] mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <HomePageContent />
+    </Suspense>
   );
 }

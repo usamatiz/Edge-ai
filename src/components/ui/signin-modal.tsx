@@ -3,12 +3,34 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react'
 import { sanitizeInput, RateLimiter, CSRFProtection } from '@/lib/utils'
-import { useAuth } from '@/contexts/AuthContext'
+import { isPasswordValidForLogin } from '@/lib/password-validation'
+import { useAppDispatch } from '@/store/hooks'
+import { setUser } from '@/store/slices/userSlice'
+
+// Google OAuth TypeScript declarations
+declare global {
+  interface Window {
+    google: {
+      accounts: {
+        oauth2: {
+          initTokenClient: (config: {
+            client_id: string
+            scope: string
+            callback: (response: { access_token?: string; error?: string }) => void
+          }) => {
+            requestAccessToken: () => void
+          }
+        }
+      }
+    }
+  }
+}
 
 interface SigninModalProps {
   isOpen: boolean
   onClose: () => void
   onOpenSignup?: () => void
+  onOpenForgotPassword?: () => void
 }
 
 interface FormData {
@@ -22,11 +44,17 @@ interface FormErrors {
   general?: string
 }
 
+interface EmailVerificationStatus {
+  isVerified: boolean
+  email: string
+}
 
+// Google OAuth Configuration
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''
+const GOOGLE_REDIRECT_URI = typeof window !== 'undefined' ? `${window.location.origin}/auth/google/callback` : ''
 
-export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninModalProps) {
-  // Use shared auth context
-  const { isUserRegistered, getUserByEmail, login } = useAuth()
+export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgotPassword }: SigninModalProps) {
+  const dispatch = useAppDispatch()
   
   const [formData, setFormData] = useState<FormData>({
     email: '',
@@ -40,11 +68,14 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   
   // Toast state
   const [showToast, setShowToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
+  const [emailVerificationStatus, setEmailVerificationStatus] = useState<EmailVerificationStatus | null>(null)
+  const [showVerificationMessage, setShowVerificationMessage] = useState(false)
 
   // Enhanced security features
   const rateLimiter = useRef(new RateLimiter(5, 60000)) // 5 attempts per minute
@@ -53,8 +84,11 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
   useEffect(() => {
     if (isOpen) {
       // Generate CSRF token when modal opens
-      const token = CSRFProtection.generateToken()
-      setCsrfToken(token)
+      CSRFProtection.generateToken().then(token => {
+        setCsrfToken(token)
+      }).catch(error => {
+        console.error('Failed to generate CSRF token:', error)
+      })
     }
   }, [isOpen])
   
@@ -62,22 +96,6 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
   const modalRef = useRef<HTMLDivElement>(null)
   const firstInputRef = useRef<HTMLInputElement>(null)
   const errorAnnouncementRef = useRef<HTMLDivElement>(null)
-
-  // Legacy rate limiting check (now using RateLimiter class)
-  // const checkRateLimit = (): boolean => {
-  //   const now = Date.now()
-  //   const timeSinceLastSubmission = now - lastSubmissionTime
-    
-  //   if (timeSinceLastSubmission < 2000) { // 2 seconds cooldown
-  //     return false
-  //   }
-    
-  //   if (submissionCount >= 5 && timeSinceLastSubmission < 60000) { // 5 attempts per minute
-  //     return false
-  //   }
-    
-  //   return true
-  // }
 
   // Show toast function
   const showToastMessage = (message: string, type: 'success' | 'error' = 'success') => {
@@ -136,8 +154,8 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
         case 'password':
           if (!value.trim()) {
             newErrors.password = 'Password is required'
-          } else if (value.length < 6) {
-            newErrors.password = 'Password must be at least 6 characters'
+          } else if (!isPasswordValidForLogin(value)) {
+            newErrors.password = 'Please enter a valid password'
           }
           break
       }
@@ -179,33 +197,69 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
     }
 
     setIsSubmitting(true)
-    // Legacy submission tracking removed - now using RateLimiter class
 
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // First, check if user exists and email verification status
+      const checkResponse = await fetch(`/api/auth/check-email?email=${encodeURIComponent(formData.email)}`)
+      const checkData = await checkResponse.json()
 
-      // Check if user exists using shared context
-      if (!isUserRegistered(formData.email)) {
-        showToastMessage('Invalid email or password. Please try again.', 'error')
-        return
+      if (checkData.success && checkData.data.exists) {
+        // User exists, now check email verification status
+        const verificationResponse = await fetch('/api/auth/check-email-verification', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-csrf-token': csrfToken,
+          },
+          body: JSON.stringify({
+            email: formData.email,
+          }),
+        })
+
+        const verificationData = await verificationResponse.json()
+
+        if (verificationData.success && !verificationData.data.isVerified) {
+          // Email not verified, show verification message
+          setEmailVerificationStatus({
+            isVerified: false,
+            email: formData.email
+          })
+          setShowVerificationMessage(true)
+          setIsSubmitting(false)
+          return
+        }
       }
 
-      // Get user data for personalized welcome message
-      const userData = getUserByEmail(formData.email)
-      
-      // In a real app, you would verify the password here
-      // For demo purposes, we'll just check if the email exists
-      
-      // Log the user in
-      const loginSuccess = login(formData.email)
-      
-      if (loginSuccess) {
-        // Show success toast and close modal
-        const welcomeMessage = userData 
-          ? `Login successful! Welcome back, ${userData.firstName}!`
-          : 'Login successful! Welcome back to EdgeAi.'
-        showToastMessage(welcomeMessage, 'success')
+      // Call the login API
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Store the access token
+        localStorage.setItem('accessToken', data.data.accessToken)
+        
+        // Dispatch Redux action to set user data
+        dispatch(setUser({
+          user: data.data.user,
+          accessToken: data.data.accessToken
+        }))
+        
+                 // Show success message
+         const welcomeMessage = data.data.user 
+           ? `Login successful! Welcome back, ${data.data.user.firstName} ${data.data.user.lastName}!`
+           : 'Login successful! Welcome back to EdgeAi.'
+         showToastMessage(welcomeMessage, 'success')
         
         // Close modal immediately after successful login
         setTimeout(() => {
@@ -224,26 +278,173 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
           handleClose()
         }, 2000)
       } else {
-        showToastMessage('Login failed. Please try again.', 'error')
+        // Check if the error is due to email verification
+        if (data.data && data.data.requiresVerification) {
+          setEmailVerificationStatus({
+            isVerified: false,
+            email: formData.email
+          })
+          setShowVerificationMessage(true)
+        } else {
+          showToastMessage(data.message || 'Login failed. Please try again.', 'error')
+        }
       }
 
-    } catch {
+    } catch (error) {
+      console.error('Login error:', error)
       showToastMessage('Something went wrong. Please try again.', 'error')
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const handleGoogleSignin = () => {
-    // Handle Google signin logic here
-    console.log('Google signin clicked')
-    showToastMessage('Google signin feature coming soon!', 'error')
+  const handleGoogleSignin = async () => {
+    setIsGoogleLoading(true)
+    
+    try {
+      // Initialize Google OAuth
+      if (typeof window !== 'undefined' && window.google) {
+        // Use Google Identity Services
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: 'openid email profile',
+          callback: async (response: { access_token?: string; error?: string }) => {
+            if (response.access_token) {
+              await handleGoogleToken(response.access_token)
+            } else {
+              showToastMessage('Google authentication failed. Please try again.', 'error')
+            }
+            setIsGoogleLoading(false)
+          },
+        })
+        
+        client.requestAccessToken()
+      } else {
+        // Fallback to traditional OAuth flow
+        const authUrl = `https://accounts.google.com/o/oauth2/auth?` +
+          `client_id=${GOOGLE_CLIENT_ID}&` +
+          `redirect_uri=${encodeURIComponent(GOOGLE_REDIRECT_URI)}&` +
+          `scope=${encodeURIComponent('openid email profile')}&` +
+          `response_type=code&` +
+          `access_type=offline`
+        
+        window.location.href = authUrl
+      }
+    } catch (error) {
+      console.error('Google signin error:', error)
+      showToastMessage('Google authentication failed. Please try again.', 'error')
+      setIsGoogleLoading(false)
+    }
+  }
+
+  const handleGoogleToken = async (accessToken: string) => {
+    try {
+      // Get user info from Google
+      const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!userInfoResponse.ok) {
+        throw new Error('Failed to get user info from Google')
+      }
+
+      const userInfo = await userInfoResponse.json()
+
+      // Call your backend API with Google user data
+      const response = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
+        },
+        body: JSON.stringify({
+          googleId: userInfo.id,
+          email: userInfo.email,
+          firstName: userInfo.given_name,
+          lastName: userInfo.family_name,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Store the access token
+        localStorage.setItem('accessToken', data.data.accessToken)
+        
+        // Dispatch Redux action to set user data
+        dispatch(setUser({
+          user: data.data.user,
+          accessToken: data.data.accessToken
+        }))
+        
+                 // Show success message
+         const welcomeMessage = data.data.user 
+           ? `Welcome to EdgeAi, ${data.data.user.firstName} ${data.data.user.lastName}!`
+           : 'Welcome to EdgeAi!'
+         showToastMessage(welcomeMessage, 'success')
+        
+        // Close modal
+        setTimeout(() => {
+          onClose()
+        }, 100)
+      } else {
+        // Check if the error is due to email verification
+        if (data.data && data.data.requiresVerification) {
+          setEmailVerificationStatus({
+            isVerified: false,
+            email: data.data.email
+          })
+          setShowVerificationMessage(true)
+        } else {
+          showToastMessage(data.message || 'Google login failed. Please try again.', 'error')
+        }
+      }
+    } catch (error) {
+      console.error('Google token handling error:', error)
+      showToastMessage('Failed to complete Google authentication. Please try again.', 'error')
+    }
   }
 
   const handleForgotPassword = () => {
-    // Handle forgot password logic here
-    console.log('Forgot password clicked')
-    showToastMessage('Password reset feature coming soon!', 'error')
+    onClose()
+    onOpenForgotPassword?.()
+  }
+
+  const handleResendVerification = async () => {
+    if (!emailVerificationStatus) return
+
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
+        },
+        body: JSON.stringify({
+          email: emailVerificationStatus.email,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        showToastMessage('Verification email sent successfully! Please check your inbox.', 'success')
+        setShowVerificationMessage(false)
+        setEmailVerificationStatus(null)
+      } else {
+        showToastMessage(data.message || 'Failed to send verification email. Please try again.', 'error')
+      }
+    } catch (error) {
+      console.error('Error sending verification email:', error)
+      showToastMessage('Something went wrong. Please try again.', 'error')
+    }
+  }
+
+  const handleCloseVerificationMessage = () => {
+    setShowVerificationMessage(false)
+    setEmailVerificationStatus(null)
   }
 
   const handleClose = useCallback(() => {
@@ -258,6 +459,9 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
     setShowSuccess(false)
     setIsSubmitting(false)
     setRememberMe(false)
+    setIsGoogleLoading(false)
+    setEmailVerificationStatus(null)
+    setShowVerificationMessage(false)
     onClose()
   }, [onClose])
 
@@ -309,6 +513,17 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
       setRememberMe(true)
     }
   }, [isOpen])
+
+  // Load Google OAuth script
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !window.google) {
+      const script = document.createElement('script')
+      script.src = 'https://accounts.google.com/gsi/client'
+      script.async = true
+      script.defer = true
+      document.head.appendChild(script)
+    }
+  }, [])
 
   if (!isOpen) return null
 
@@ -367,12 +582,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
                 <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
                 <h3 className="text-2xl font-semibold text-gray-800 mb-2">Login Successful!</h3>
                 <p className="text-gray-600">
-                  {(() => {
-                    const userData = getUserByEmail(formData.email)
-                    return userData 
-                      ? `Welcome back, ${userData.firstName} ${userData.lastName}! You can now start creating amazing videos.`
-                      : 'Welcome back to EdgeAi. You can now start creating amazing videos.'
-                  })()}
+                  Welcome back to EdgeAi. You can now start creating amazing videos.
                 </p>
               </div>
             </div>
@@ -392,13 +602,42 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
 
           {/* Modal Content */}
           <div className="pt-7 overflow-y-auto flex-1 px-2">
-            {/* General Error Message */}
-            {errors.general && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                <p className="text-red-700 text-sm">{errors.general}</p>
+                      {/* General Error Message */}
+          {errors.general && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+              <p className="text-red-700 text-sm">{errors.general}</p>
+            </div>
+          )}
+
+          {/* Email Verification Message */}
+          {showVerificationMessage && emailVerificationStatus && (
+            <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h4 className="text-orange-800 font-medium mb-1">Email Verification Required</h4>
+                  <p className="text-orange-700 text-sm mb-3">
+                    Please verify your email address before logging in. Check your inbox for the verification link.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <button
+                      onClick={handleResendVerification}
+                      className="text-orange-600 hover:text-orange-800 text-sm font-medium underline"
+                    >
+                      Resend verification email
+                    </button>
+                    <button
+                      onClick={handleCloseVerificationMessage}
+                      className="text-orange-600 hover:text-orange-800 text-sm font-medium underline"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
               </div>
-            )}
+            </div>
+          )}
 
             <form onSubmit={(e) => { e.preventDefault(); handleSignin(); }}>
               {/* CSRF Token (hidden) */}
@@ -542,23 +781,36 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup }: SigninMod
               <button
                 type="button"
                 onClick={handleGoogleSignin}
-                className="w-[220px] mx-auto bg-white text-[#344054] py-[9.2px] px-2 rounded-full font-normal text-[16px] border border-[#D0D5DD] hover:bg-[#D0D5DD] transition-colors duration-300 cursor-pointer flex items-center justify-center gap-x-3"
+                disabled={isGoogleLoading}
+                className={`w-[220px] mx-auto bg-white text-[#344054] py-[9.2px] px-2 rounded-full font-normal text-[16px] border border-[#D0D5DD] transition-colors duration-300 cursor-pointer flex items-center justify-center gap-x-3 ${
+                  isGoogleLoading 
+                    ? 'opacity-50 cursor-not-allowed' 
+                    : 'hover:bg-[#D0D5DD]'
+                }`}
               >
-                <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <g clipPath="url(#clip0_7697_226)">
-                  <path d="M24.2663 12.2764C24.2663 11.4607 24.2001 10.6406 24.059 9.83807H12.7402V14.4591H19.222C18.953 15.9494 18.0888 17.2678 16.8233 18.1056V21.1039H20.6903C22.9611 19.0139 24.2663 15.9274 24.2663 12.2764Z" fill="#4285F4"/>
-                  <path d="M12.7401 24.0008C15.9766 24.0008 18.7059 22.9382 20.6945 21.1039L16.8276 18.1055C15.7517 18.8375 14.3627 19.252 12.7445 19.252C9.61388 19.252 6.95946 17.1399 6.00705 14.3003H2.0166V17.3912C4.05371 21.4434 8.2029 24.0008 12.7401 24.0008Z" fill="#34A853"/>
-                  <path d="M6.00277 14.3003C5.50011 12.8099 5.50011 11.1961 6.00277 9.70575V6.61481H2.01674C0.314734 10.0056 0.314734 14.0004 2.01674 17.3912L6.00277 14.3003Z" fill="#FBBC04"/>
-                  <path d="M12.7401 4.74966C14.4509 4.7232 16.1044 5.36697 17.3434 6.54867L20.7695 3.12262C18.6001 1.0855 15.7208 -0.034466 12.7401 0.000808666C8.2029 0.000808666 4.05371 2.55822 2.0166 6.61481L6.00264 9.70575C6.95064 6.86173 9.60947 4.74966 12.7401 4.74966Z" fill="#EA4335"/>
-                  </g>
-                  <defs>
-                  <clipPath id="clip0_7697_226">
-                  <rect width="24" height="24" fill="white" transform="translate(0.5)"/>
-                  </clipPath>
-                  </defs>
-                </svg>
-
-                Sign in with Google
+                {isGoogleLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <g clipPath="url(#clip0_7697_226)">
+                      <path d="M24.2663 12.2764C24.2663 11.4607 24.2001 10.6406 24.059 9.83807H12.7402V14.4591H19.222C18.953 15.9494 18.0888 17.2678 16.8233 18.1056V21.1039H20.6903C22.9611 19.0139 24.2663 15.9274 24.2663 12.2764Z" fill="#4285F4"/>
+                      <path d="M12.7401 24.0008C15.9766 24.0008 18.7059 22.9382 20.6945 21.1039L16.8276 18.1055C15.7517 18.8375 14.3627 19.252 12.7445 19.252C9.61388 19.252 6.95946 17.1399 6.00705 14.3003H2.0166V17.3912C4.05371 21.4434 8.2029 24.0008 12.7401 24.0008Z" fill="#34A853"/>
+                      <path d="M6.00277 14.3003C5.50011 12.8099 5.50011 11.1961 6.00277 9.70575V6.61481H2.01674C0.314734 10.0056 0.314734 14.0004 2.01674 17.3912L6.00277 14.3003Z" fill="#FBBC04"/>
+                      <path d="M12.7401 4.74966C14.4509 4.7232 16.1044 5.36697 17.3434 6.54867L20.7695 3.12262C18.6001 1.0855 15.7208 -0.034466 12.7401 0.000808666C8.2029 0.000808666 4.05371 2.55822 2.0166 6.61481L6.00264 9.70575C6.95064 6.86173 9.60947 4.74966 12.7401 4.74966Z" fill="#EA4335"/>
+                      </g>
+                      <defs>
+                      <clipPath id="clip0_7697_226">
+                      <rect width="24" height="24" fill="white" transform="translate(0.5)"/>
+                      </clipPath>
+                      </defs>
+                    </svg>
+                    Sign in with Google
+                  </>
+                )}
               </button>
 
               {/* Footer Link */}

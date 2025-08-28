@@ -4,6 +4,7 @@ import * as React from "react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import SignupModal from "./signup-modal";
+import EmailVerificationModal from "./email-verification-modal";
 
 
 interface FeatureItem {
@@ -83,6 +84,8 @@ const featureItems: FeatureItem[] = [
 
 export function FeaturesSection({ className }: FeaturesSectionProps) {
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
+  const [isEmailVerificationModalOpen, setIsEmailVerificationModalOpen] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
 
   const handleSignupClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -153,6 +156,17 @@ export function FeaturesSection({ className }: FeaturesSectionProps) {
       <SignupModal
         isOpen={isSignupModalOpen}
         onClose={handleCloseSignupModal}
+        onRegistrationSuccess={(email) => {
+          setVerificationEmail(email);
+          setIsEmailVerificationModalOpen(true);
+        }}
+      />
+
+      {/* Email Verification Modal */}
+      <EmailVerificationModal
+        isOpen={isEmailVerificationModalOpen}
+        onClose={() => setIsEmailVerificationModalOpen(false)}
+        email={verificationEmail}
       />
     </section>
   );

@@ -19,9 +19,8 @@ type ContactFormData = z.infer<typeof contactFormSchema>
 
 export default function ContactForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
-  
-
   const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const {
     register,
@@ -34,15 +33,27 @@ export default function ContactForm() {
 
   const onSubmit = async (data: ContactFormData) => {
     setIsSubmitting(true)
+    setSubmitError(null)
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      console.log('Form data:', data)
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to submit form')
+      }
+
       setSubmitSuccess(true)
       reset()
-      setTimeout(() => setSubmitSuccess(false), 3000)
+      setTimeout(() => setSubmitSuccess(false), 5000)
     } catch (error) {
       console.error('Error submitting form:', error)
+      setSubmitError(error instanceof Error ? error.message : 'Failed to submit form. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -181,6 +192,15 @@ export default function ContactForm() {
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <p className="text-green-800 text-sm">
                     Thank you! Your message has been sent successfully. We&apos;ll get back to you within 24 hours.
+                  </p>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {submitError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <p className="text-red-800 text-sm">
+                    {submitError}
                   </p>
                 </div>
               )}

@@ -51,8 +51,7 @@ export function HeroSection({ className }: HeroSectionProps) {
         {/* Descriptive Subtitle */}
         <div className="max-w-3xl mx-auto">
           <p className="text-xl sm:text-2xl lg:text-2xl text-gray-600 leading-relaxed font-normal">
-            Custom AI videos for agents & loan officers—just fill one form, hit submit, and we handle the rest.{" "}
-            <span className="text-gray-500">(Once onboarded)</span>
+            Custom AI videos for agents & loan officers—just fill one form, hit submit, and we handle the rest.
           </p>
         </div>
 

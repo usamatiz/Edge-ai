@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AlertCircle } from 'lucide-react'
 import Image from 'next/image'
 
@@ -10,16 +10,26 @@ interface CreateVideoModalProps {
   videoTitle: string
   startAtComplete?: boolean
   videoData?: { title: string; youtubeUrl: string; thumbnail: string } | null
+  webhookResponse?: {
+    prompt?: string
+    description?: string
+    conclusion?: string
+    company_name?: string
+    social_handles?: string
+    license?: string
+    avatar?: string
+    email?: string
+  } | null
 }
 
 type ModalStep = 'form' | 'loading' | 'complete'
 
-export default function CreateVideoModal({ isOpen, onClose, startAtComplete = false, videoData }: CreateVideoModalProps) {
+export default function CreateVideoModal({ isOpen, onClose, startAtComplete = false, videoData, webhookResponse }: CreateVideoModalProps) {
   const [currentStep, setCurrentStep] = useState<ModalStep>(startAtComplete ? 'complete' : 'form')
   const [formData, setFormData] = useState({
-    prompt: '',
-    description: '',
-    conclusion: ''
+    prompt: webhookResponse?.prompt || '',
+    description: webhookResponse?.description || '',
+    conclusion: webhookResponse?.conclusion || ''
   })
   const [errors, setErrors] = useState({
     prompt: '',
@@ -31,6 +41,21 @@ export default function CreateVideoModal({ isOpen, onClose, startAtComplete = fa
     description: false,
     conclusion: false
   })
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  // Update form data when webhookResponse changes
+  useEffect(() => {
+    // console.log('Modal received webhookResponse:', webhookResponse);
+    if (webhookResponse) {
+      const newFormData = {
+        prompt: webhookResponse.prompt || '',
+        description: webhookResponse.description || '',
+        conclusion: webhookResponse.conclusion || ''
+      }
+      // console.log('Setting modal form data:', newFormData);
+      setFormData(newFormData)
+    }
+  }, [webhookResponse])
 
   const handleInputChange = (field: keyof typeof formData, value: string) => {
     setFormData(prev => ({
@@ -75,31 +100,178 @@ export default function CreateVideoModal({ isOpen, onClose, startAtComplete = fa
     return !newErrors.prompt && !newErrors.description && !newErrors.conclusion
   }
 
-  const handleCreateVideo = () => {
+  const handleVideoDownload = async (videoUrl: string) => {
+    try {
+      console.log('Video URL received:', videoUrl);
+      
+      // Call the download API to process the video
+      const downloadResponse = await fetch('/api/auth/video/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          videoUrl: videoUrl,
+          userEmail: webhookResponse?.email || ''
+        }),
+      });
+
+      if (!downloadResponse.ok) {
+        const downloadError = await downloadResponse.json().catch(() => ({}));
+        console.error('Video download API error:', downloadError);
+        throw new Error(downloadError.message || 'Failed to download and store video');
+      }
+
+      const downloadResult = await downloadResponse.json();
+      console.log('Video download and storage result:', downloadResult);
+    } catch (error) {
+      console.error('Error downloading video:', error);
+      throw error;
+    }
+  }
+
+  const handleCreateVideo = async () => {
     if (!validateForm()) {
       return
     }
     
     setCurrentStep('loading')
     
-    // Simulate video creation process
-    setTimeout(() => {
-      setCurrentStep('complete')
-    }, 3000) // 3 seconds delay
+    try {
+      // Prepare data for video generation API
+      const videoGenerationData = {
+        hook: formData.prompt,
+        body: formData.description,
+        conclusion: formData.conclusion,
+        company_name: webhookResponse?.company_name || '',
+        social_handles: webhookResponse?.social_handles || '',
+        license: webhookResponse?.license || '',
+        avatar: webhookResponse?.avatar || '',
+        email: webhookResponse?.email || ''
+      }
+
+      console.log('Sending video generation request:', videoGenerationData);
+
+      // Call the video generation API (second webhook)
+      const response = await fetch('/api/auth/create-video/generate-video', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(videoGenerationData),
+      });
+
+      const result = await response.json();
+      console.log('Video generation result:', result);
+
+      if (!response.ok) {
+        console.error('Video generation API error:', result);
+        
+        // Handle different types of errors
+        let errorMessage = 'Failed to generate video';
+        if (result.error) {
+          if (typeof result.error === 'object' && result.error.message) {
+            errorMessage = result.error.message;
+          } else if (typeof result.error === 'string') {
+            errorMessage = result.error;
+          }
+        } else if (result.message) {
+          errorMessage = result.message;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      // Check if the response contains videoUrl
+      if (result.data && result.data.videoUrl) {
+        console.log('Video URL received:', result.data.videoUrl);
+        await handleVideoDownload(result.data.videoUrl);
+        setCurrentStep('complete');
+      } else if (result.data && result.data.status === 'processing') {
+        // Video is still processing
+        console.log('Video generation started, processing in progress...');
+        console.log('Request ID:', result.data.request_id);
+        console.log('Estimated completion:', result.data.estimated_completion);
+        
+        // Keep in loading state - the API will wait for the response
+        setCurrentStep('loading');
+      } else {
+        // Unexpected response format
+        console.log('Unexpected response format:', result);
+        throw new Error('Unexpected response from video generation service');
+      }
+
+    } catch (error: any) {
+      console.error('Error generating video:', error);
+      console.log(`Error generating video: ${error.message}`);
+      setCurrentStep('form') // Go back to form on error
+    }
   }
 
   const handleClose = () => {
     setCurrentStep(startAtComplete ? 'complete' : 'form')
-    setFormData({ prompt: '', description: '', conclusion: '' })
+    setFormData({ 
+      prompt: webhookResponse?.prompt || '', 
+      description: webhookResponse?.description || '', 
+      conclusion: webhookResponse?.conclusion || '' 
+    })
     setErrors({ prompt: '', description: '', conclusion: '' })
     setTouched({ prompt: false, description: false, conclusion: false })
     onClose()
   }
 
-  const handleDownload = () => {
-    // Simulate download
-    console.log('Downloading video...')
-    // Add actual download logic here
+  const handleDownload = async () => {
+    if (!videoData?.youtubeUrl) {
+      console.error('No video URL available for download')
+      return
+    }
+
+    console.log('Downloading video from:', videoData.youtubeUrl)
+    
+    try {
+      // Set loading state
+      setIsDownloading(true)
+      console.log('Starting download...')
+      
+      // Use our proxy to avoid CORS issues
+      const proxyUrl = `/api/auth/video/download-proxy?url=${encodeURIComponent(videoData.youtubeUrl)}`
+      
+      // Fetch the video through our proxy
+      const response = await fetch(proxyUrl)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to download video: ${response.status} ${response.statusText}`)
+      }
+      
+      // Convert response to blob
+      const blob = await response.blob()
+      
+      // Create blob URL
+      const blobUrl = window.URL.createObjectURL(blob)
+      
+      // Create download link
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = `${videoData.title || 'video'}.mp4`
+      
+      // Trigger download
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      // Clean up blob URL
+      window.URL.revokeObjectURL(blobUrl)
+      
+      console.log('Download completed for:', videoData.title)
+      
+    } catch (error) {
+      console.error('Download failed:', error)
+      // You could show a user-friendly error message here
+      alert('Download failed. Please try again.')
+    } finally {
+      // Reset loading state
+      setIsDownloading(false)
+    }
   }
 
   const getYouTubeEmbedUrl = (url: string) => {
@@ -218,57 +390,80 @@ export default function CreateVideoModal({ isOpen, onClose, startAtComplete = fa
           {currentStep === 'loading' && (
             <div className="text-center py-12">
               <div className="mb-6">
-                <h4 className="md:text-[32px] text-[24px] font-semibold text-[#282828] mb-10">
+                <h4 className="md:text-[32px] text-[24px] font-semibold text-[#282828] mb-4">
                   Your Video is in Process
                 </h4>
+                <p className="text-[#5F5F5F] text-lg mb-6">
+                  This process typically takes 15 minutes. Please don&apos;t close this window.
+                </p>
               </div>
 
-            <div className="flex justify-center mb-6 relative">
-              <div className="loader text-[#5046E5] text-[18px] font-normal absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">Loading...</div>
-              <div className="flex justify-center">
-                    <div className="spinner"></div>
+              <div className="flex justify-center mb-6 relative">
+                <div className="loader text-[#5046E5] text-[18px] font-normal absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">Processing...</div>
+                <div className="flex justify-center">
+                  <div className="spinner"></div>
                 </div>
-                </div>
+              </div>
+              
+              <div className="text-[#5F5F5F] text-sm">
+                <p>• Generating video content</p>
+                <p>• Applying company branding</p>
+                <p>• Finalizing video quality</p>
+              </div>
             </div>
           )}
 
                      {/* Step 3: Complete */}
-           {currentStep === 'complete' && (
-             <div className="space-y-6">        
-                 {videoData ? (
-                  <>
-                    {/* Video Preview */}
-                    <div className="relative mt-7 h-[420px] w-full aspect-video bg-gray-100 rounded-[8px] overflow-hidden">
-                   <iframe
-                     src={getYouTubeEmbedUrl(videoData.youtubeUrl)}
-                     title={videoData.title}
-                     className="w-full h-full rounded-[8px]"
-                     frameBorder="0"
-                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                     allowFullScreen
-                   />
-                   </div>
-                   </>
-                 ) : (
-                  <>
-                  
-                  {/* Video Preview */}
-                  <div className="relative mt-7 h-[420px] w-full aspect-video bg-gray-100 rounded-[8px] overflow-hidden">
-                   <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-                     <Image src="/images/modal-image.png" alt="Video Preview" width={1000} height={1000} className='w-full h-full object-cover' />
-                   </div>
-                   </div>
-                   </>
-                 )}
-              
-              <button
-                onClick={handleDownload}
-                className="w-full bg-[#5046E5] text-white py-[11.4px] px-6 rounded-full font-semibold text-[20px] hover:bg-transparent hover:text-[#5046E5] border-2 border-[#5046E5] transition-colors duration-300 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                Download
-              </button>
-            </div>
-          )}
+              {currentStep === 'complete' && (
+                <div className="space-y-6">        
+                    {videoData ? (
+                     <>
+                       {/* Video Preview */}
+                       <div className="relative mt-7 h-[420px] w-full aspect-video bg-gray-100 rounded-[8px] overflow-hidden">
+                       <video
+                          src={videoData.youtubeUrl} 
+                          title={videoData.title}
+                          className="w-full h-full rounded-[8px] object-contain cursor-pointer"
+                          controls
+                          preload="metadata"
+                          poster={videoData.thumbnail}
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                      </div>
+                      </>
+                    ) : (
+                     <>
+                      
+                      {/* Video Preview */}
+                      <div className="relative mt-7 h-[420px] w-full aspect-video bg-gray-100 rounded-[8px] overflow-hidden">
+                      <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                        <Image src="/images/modal-image.png" alt="Video Preview" width={1000} height={1000} className='w-full h-full object-cover' />
+                      </div>
+                      </div>
+                      </>
+                    )}
+                 
+                <button
+                  onClick={handleDownload}
+                  disabled={isDownloading}
+                  className={`w-full bg-[#5046E5] text-white py-[11.4px] px-6 rounded-full font-semibold text-[20px] border-2 border-[#5046E5] transition-colors duration-300 flex items-center justify-center gap-2 ${
+                    isDownloading 
+                      ? 'opacity-50 cursor-not-allowed' 
+                      : 'hover:bg-transparent hover:text-[#5046E5] cursor-pointer'
+                  }`}
+                >
+                  {isDownloading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      Downloading...
+                    </>
+                  ) : (
+                    'Download'
+                  )}
+                </button>
+              </div>
+            )}
         </div>
       </div>
     </div>

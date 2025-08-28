@@ -3,12 +3,34 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react'
 import { sanitizeInput, RateLimiter, CSRFProtection } from '@/lib/utils'
-import { useAuth, type UserData } from '@/contexts/AuthContext'
+import { validatePassword, getPasswordStrength, getPasswordStrengthColor, getPasswordStrengthBgColor } from '@/lib/password-validation'
+import { useAppDispatch } from '@/store/hooks'
+import { setUser } from '@/store/slices/userSlice'
+
+// Google OAuth TypeScript declarations
+declare global {
+  interface Window {
+    google: {
+      accounts: {
+        oauth2: {
+          initTokenClient: (config: {
+            client_id: string
+            scope: string
+            callback: (response: { access_token?: string; error?: string }) => void
+          }) => {
+            requestAccessToken: () => void
+          }
+        }
+      }
+    }
+  }
+}
 
 interface SignupModalProps {
   isOpen: boolean
   onClose: () => void
   onOpenSignin?: () => void
+  onRegistrationSuccess?: (email: string) => void
 }
 
 interface FormData {
@@ -37,9 +59,8 @@ interface PasswordStrength {
 
 
 
-export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupModalProps) {
-  // Use shared auth context
-  const { addUserAndLogin, isUserRegistered } = useAuth()
+export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrationSuccess }: SignupModalProps) {
+  const dispatch = useAppDispatch()
   
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
@@ -74,42 +95,13 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
   const firstInputRef = useRef<HTMLInputElement>(null)
   const errorAnnouncementRef = useRef<HTMLDivElement>(null)
 
-  // Password strength checker
+  // Password strength checker using centralized validation
   const checkPasswordStrength = (password: string): PasswordStrength => {
-    const feedback: string[] = []
-    let score = 0
-
-    if (password.length >= 8) {
-      score += 1
-    } else {
-      feedback.push('At least 8 characters')
+    const result = validatePassword(password)
+    return {
+      score: result.score,
+      feedback: result.feedback
     }
-
-    if (/[a-z]/.test(password)) {
-      score += 1
-    } else {
-      feedback.push('Include lowercase letter')
-    }
-
-    if (/[A-Z]/.test(password)) {
-      score += 1
-    } else {
-      feedback.push('Include uppercase letter')
-    }
-
-    if (/[0-9]/.test(password)) {
-      score += 1
-    } else {
-      feedback.push('Include number')
-    }
-
-    if (/[^A-Za-z0-9]/.test(password)) {
-      score += 1
-    } else {
-      feedback.push('Include special character')
-    }
-
-    return { score, feedback }
   }
 
   // Phone number formatter
@@ -138,8 +130,11 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
   useEffect(() => {
     if (isOpen) {
       // Generate CSRF token when modal opens
-      const token = CSRFProtection.generateToken()
-      setCsrfToken(token)
+      CSRFProtection.generateToken().then(token => {
+        setCsrfToken(token)
+      }).catch(error => {
+        console.error('Failed to generate CSRF token:', error)
+      })
     }
   }, [isOpen])
 
@@ -251,17 +246,18 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
         case 'phone':
           if (!value.trim()) {
             newErrors.phone = 'Phone is required'
-          } else if (value.replace(/\D/g, '').length < 10) {
-            newErrors.phone = 'Please enter a valid phone number'
+          } else if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(value)) {
+            newErrors.phone = 'Please enter a valid phone number in format (XXX) XXX-XXXX'
           }
           break
         case 'password':
           if (!value.trim()) {
             newErrors.password = 'Password is required'
-          } else if (value.length < 8) {
-            newErrors.password = 'Password must be at least 8 characters'
-          } else if (passwordStrength.score < 3) {
-            newErrors.password = 'Password is too weak. Please include uppercase, lowercase, numbers, and special characters'
+          } else {
+            const passwordResult = validatePassword(value)
+            if (!passwordResult.isValid) {
+              newErrors.password = passwordResult.errors[0] || 'Password does not meet requirements'
+            }
           }
           break
         case 'confirmPassword':
@@ -310,64 +306,154 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
     }
 
     setIsSubmitting(true)
-    // Legacy submission tracking removed - now using RateLimiter class
 
     try {
-      // Check if email already exists using shared context
-      if (isUserRegistered(formData.email)) {
-        showToastMessage('An account with this email already exists.', 'error')
-        return
-      }
-
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // Create new user data
-      const newUser: UserData = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone.replace(/\D/g, ''), // Store clean phone number
-        createdAt: new Date().toISOString()
-      }
-
-      // Save to shared context and log the user in atomically
-      addUserAndLogin(newUser)
-      
-      // Show success toast and close modal
-      showToastMessage('Account created successfully! Welcome to EdgeAi.', 'success')
-      
-      // Close modal immediately after successful signup
-      setTimeout(() => {
-        onClose()
-      }, 100)
-      
-      // Save form data if "remember form" is checked
-      if (rememberForm) {
-        localStorage.setItem('signupFormData', JSON.stringify({
+      // Call the registration API
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
+        },
+        body: JSON.stringify({
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
-          phone: formData.phone,
-        }))
+          phone: formData.phone.replace(/\D/g, ''), // Store clean phone number
+          password: formData.password
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Save form data if "remember form" is checked
+        if (rememberForm) {
+          localStorage.setItem('signupFormData', JSON.stringify({
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            phone: formData.phone,
+          }))
+        }
+
+        // Call the success callback with email
+        onRegistrationSuccess?.(formData.email)
+        
+        // Close the signup modal
+        onClose()
+
+      } else {
+        // Handle specific error cases
+        if (data.message.includes('already exists')) {
+          showToastMessage('An account with this email already exists. Please sign in instead.', 'error')
+        } else {
+          showToastMessage(data.message || 'Registration failed. Please try again.', 'error')
+        }
       }
 
-      // Auto-close after success message
-      setTimeout(() => {
-        handleClose()
-      }, 2000)
-
-    } catch {
-      showToastMessage('Something went wrong. Please try again.', 'error')
+    } catch (error) {
+      console.error('Registration error:', error)
+      showToastMessage('Network error. Please check your connection and try again.', 'error')
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const handleGoogleSignup = () => {
-    // Handle Google signup logic here
-    console.log('Google signup clicked')
-    showToastMessage('Google signup feature coming soon!', 'error')
+  const handleGoogleSignup = async () => {
+    try {
+      // Initialize Google OAuth
+      if (typeof window !== 'undefined' && window.google) {
+        // Use Google Identity Services
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
+          scope: 'openid email profile',
+          callback: async (response: { access_token?: string; error?: string }) => {
+            if (response.access_token) {
+              await handleGoogleToken(response.access_token)
+            } else {
+              showToastMessage('Google authentication failed. Please try again.', 'error')
+            }
+          },
+        })
+        
+        client.requestAccessToken()
+      } else {
+        // Fallback to traditional OAuth flow
+        const authUrl = `https://accounts.google.com/o/oauth2/auth?` +
+          `client_id=${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}&` +
+          `redirect_uri=${encodeURIComponent(`${window.location.origin}/auth/google/callback`)}&` +
+          `scope=${encodeURIComponent('openid email profile')}&` +
+          `response_type=code&` +
+          `access_type=offline`
+        
+        window.location.href = authUrl
+      }
+    } catch (error) {
+      console.error('Google signup error:', error)
+      showToastMessage('Google authentication failed. Please try again.', 'error')
+    }
+  }
+
+  const handleGoogleToken = async (accessToken: string) => {
+    try {
+      // Get user info from Google
+      const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!userInfoResponse.ok) {
+        throw new Error('Failed to get user info from Google')
+      }
+
+      const userInfo = await userInfoResponse.json()
+
+      // Call your backend API with Google user data
+      const response = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
+        },
+        body: JSON.stringify({
+          googleId: userInfo.id,
+          email: userInfo.email,
+          firstName: userInfo.given_name,
+          lastName: userInfo.family_name,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Store the access token
+        localStorage.setItem('accessToken', data.data.accessToken)
+        
+        // Dispatch Redux action to set user data
+        dispatch(setUser({
+          user: data.data.user,
+          accessToken: data.data.accessToken
+        }))
+        
+        // Show success message
+        const welcomeMessage = data.data.isNewUser 
+          ? `Welcome to EdgeAi, ${data.data.user.firstName}! Your account has been created successfully.`
+          : `Welcome back to EdgeAi, ${data.data.user.firstName}!`
+        showToastMessage(welcomeMessage, 'success')
+        
+        // Close modal
+        setTimeout(() => {
+          onClose()
+        }, 100)
+      } else {
+        showToastMessage(data.message || 'Google signup failed. Please try again.', 'error')
+      }
+    } catch (error) {
+      console.error('Google token handling error:', error)
+      showToastMessage('Failed to complete Google authentication. Please try again.', 'error')
+    }
   }
 
   const handleClose = useCallback(() => {
@@ -446,6 +532,17 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
       }
     }
   }, [isOpen])
+
+  // Load Google OAuth script
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !window.google) {
+      const script = document.createElement('script')
+      script.src = 'https://accounts.google.com/gsi/client'
+      script.async = true
+      script.defer = true
+      document.head.appendChild(script)
+    }
+  }, [])
 
   if (!isOpen) return null
 
@@ -664,21 +761,23 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin }: SignupMod
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-sm text-gray-600">Password strength:</span>
                         <div className="flex gap-1">
-                          {[1, 2, 3, 4, 5].map((level) => (
-                            <div
-                              key={level}
-                              className={`w-2 h-2 rounded-full ${
-                                level <= passwordStrength.score
-                                  ? passwordStrength.score >= 4
-                                    ? 'bg-green-500'
-                                    : passwordStrength.score >= 3
-                                    ? 'bg-yellow-500'
-                                    : 'bg-red-500'
-                                  : 'bg-gray-300'
-                              }`}
-                            />
-                          ))}
+                          {[1, 2, 3, 4, 5].map((level) => {
+                            const strength = getPasswordStrength(passwordStrength.score)
+                            return (
+                              <div
+                                key={level}
+                                className={`w-2 h-2 rounded-full ${
+                                  level <= passwordStrength.score
+                                    ? getPasswordStrengthBgColor(strength)
+                                    : 'bg-gray-300'
+                                }`}
+                              />
+                            )
+                          })}
                         </div>
+                        <span className={`text-xs font-medium ${getPasswordStrengthColor(getPasswordStrength(passwordStrength.score))}`}>
+                          {getPasswordStrength(passwordStrength.score).replace('-', ' ')}
+                        </span>
                       </div>
                       {passwordStrength.feedback.length > 0 && (
                         <ul className="text-xs text-gray-600 space-y-1">
