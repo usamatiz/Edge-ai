@@ -19,7 +19,7 @@ The S3 integration allows you to:
 
 ## Environment Variables
 
-Add the following environment variables to your `.env.local` file:
+Add the following environment variables to your `.env` file:
 
 ```env
 # AWS S3 Configuration
