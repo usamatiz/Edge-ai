@@ -91,7 +91,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = React.useState(false);
   const [isEmailVerificationModalOpen, setIsEmailVerificationModalOpen] = React.useState(false);
   const [verificationEmail, setVerificationEmail] = React.useState('');
-  const { isAuthenticated, user: currentUser } = useAppSelector((state) => state.user);
+  const { isAuthenticated, user: currentUser, isLoading } = useAppSelector((state) => state.user);
   const dispatch = useAppDispatch();
   const router = useRouter();
   
@@ -416,7 +416,24 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
         {/* Action Buttons Section - Fixed at Bottom */}
         <div className="flex-shrink-0 p-6 border-t border-gray-200/50 bg-gradient-to-t from-gray-50/80 to-transparent">
           <div className="space-y-4">
-            {isAuthenticated ? (
+            {isLoading ? (
+              // Show loading skeleton during authentication check
+              <div className="space-y-4">
+                <div className="px-2">
+                  <div className="text-xs font-semibold text-[#5F5F5F] uppercase tracking-wider mb-2">
+                    Loading...
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="h-3 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-1 h-12 bg-gray-200 rounded-2xl animate-pulse"></div>
+                  <div className="flex-1 h-12 bg-gray-200 rounded-2xl animate-pulse"></div>
+                </div>
+              </div>
+            ) : isAuthenticated ? (
               <div className="space-y-4">
                 {/* User Info */}
                 <div className="px-2">

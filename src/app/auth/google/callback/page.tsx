@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { validateAndHandleToken } from '@/lib/jwt-client';
 
 function GoogleCallbackContent() {
   const router = useRouter();
@@ -84,8 +85,19 @@ function GoogleCallbackContent() {
         const data = await response.json();
 
         if (data.success) {
+          // Validate JWT token before storing
+          const accessToken = data.data.accessToken;
+          if (!validateAndHandleToken(accessToken)) {
+            setStatus('error');
+            setMessage('Invalid token received. Please try again.');
+            setTimeout(() => {
+              router.push('/');
+            }, 3000);
+            return;
+          }
+          
           // Store the access token
-          localStorage.setItem('accessToken', data.data.accessToken);
+          localStorage.setItem('accessToken', accessToken);
           setStatus('success');
           setMessage('Google authentication successful! Redirecting...');
           

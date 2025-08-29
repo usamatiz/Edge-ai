@@ -15,12 +15,14 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@reduxjs/toolkit": "^2.8.2",
     "@types/aos": "^3.0.7",
+    "@types/jsonwebtoken": "^9.0.10",
     "aos": "^2.3.4",
     "aws-sdk": "^2.1692.0",
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dompurify": "^3.2.6",
+    "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.539.0",
     "mongoose": "^8.0.0",
     "next": "15.4.6",
@@ -33,7 +35,8 @@
     "react-redux": "^9.2.0",
     "swiper": "^11.2.10",
     "tailwind-merge": "^2.6.0",
-    "zod": "^4.0.17"
+    "zod": "^4.0.17",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

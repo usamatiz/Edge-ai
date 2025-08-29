@@ -35,7 +35,13 @@ export default function VideoGallery({ userId, className }: VideoGalleryProps) {
       setLoading(true)
       setError(null)
       
-      const response = await fetch(`/api/auth/video/gallery?userId=${userId}`)
+      const response = await fetch('/api/video/gallery', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Content-Type': 'application/json',
+        },
+      })
       const result = await response.json()
       
       if (!result.success) {
@@ -59,12 +65,13 @@ export default function VideoGallery({ userId, className }: VideoGalleryProps) {
     try {
       setDeletingVideo(videoId)
       
-      const response = await fetch('/api/auth/video/delete', {
-        method: 'DELETE',
+      const response = await fetch('/api/video/delete', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
         },
-        body: JSON.stringify({ userId, videoId }),
+        body: JSON.stringify({ videoId }),
       })
       
       const result = await response.json()

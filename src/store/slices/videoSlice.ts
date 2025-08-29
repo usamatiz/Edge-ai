@@ -26,6 +26,7 @@ export interface VideoRequest {
 interface VideoState {
   currentVideo: VideoRequest | null;
   videoHistory: VideoRequest[];
+  videoTopic: string | null; // Add video topic to state
   isLoading: boolean;
   error: string | null;
 }
@@ -33,6 +34,7 @@ interface VideoState {
 const initialState: VideoState = {
   currentVideo: null,
   videoHistory: [],
+  videoTopic: null,
   isLoading: false,
   error: null,
 };
@@ -60,6 +62,7 @@ const videoSlice = createSlice({
     createVideoRequest: (state, action: PayloadAction<VideoRequest>) => {
       state.currentVideo = action.payload;
       state.videoHistory.unshift(action.payload);
+      state.videoTopic = action.payload.videoTopic; // Save video topic to state
       state.isLoading = false;
       state.error = null;
     },

@@ -1,6 +1,7 @@
 import User, { IUser } from '../models/User.model';
 import crypto from 'crypto';
 import EmailService from './Email.service';
+import JWTService from '../../lib/jwt';
 
 interface RegisterData {
   firstName: string;
@@ -16,7 +17,7 @@ interface LoginData {
 }
 
 interface ResetPasswordData {
-  accessToken: string;
+  resetToken: string;
   newPassword: string;
 }
 
@@ -27,13 +28,17 @@ interface GoogleUserData {
   lastName: string;
 }
 
+// We'll use the database to track used reset tokens
+
 
 
 class AuthService {
   private emailService: EmailService;
+  private jwtService: JWTService;
 
   constructor() {
     this.emailService = new EmailService();
+    this.jwtService = new JWTService();
   }
 
   // ==================== CREATE OPERATIONS ====================
@@ -69,9 +74,8 @@ class AuthService {
       // Save user
       await user.save();
 
-      // Generate access token
-      const accessToken = user.generateAccessToken();
-      await user.save();
+      // Generate JWT access token
+      const accessToken = this.jwtService.generateToken(user._id?.toString() || '', user.email);
 
       // Send verification email
       await this.emailService.sendVerificationEmail(user.email, verificationToken, user.firstName);
@@ -94,9 +98,8 @@ class AuthService {
       let user = await User.findOne({ googleId: googleData.googleId });
 
       if (user) {
-        // Existing Google user - generate new token
-        const accessToken = user.generateAccessToken();
-        await user.save();
+        // Existing Google user - generate new JWT token
+        const accessToken = this.jwtService.generateToken(user._id?.toString() || '', user.email);
         
         return { user, accessToken, isNewUser: false };
       }
@@ -110,7 +113,7 @@ class AuthService {
         user.googleEmail = googleData.email;
         user.isEmailVerified = true; // Google emails are pre-verified
         
-        const accessToken = user.generateAccessToken();
+        const accessToken = this.jwtService.generateToken(user._id?.toString() || '', user.email);
         await user.save();
         
         return { user, accessToken, isNewUser: false };
@@ -127,7 +130,7 @@ class AuthService {
         password: crypto.randomBytes(32).toString('hex') // Random password for Google users
       });
 
-      const accessToken = user.generateAccessToken();
+      const accessToken = this.jwtService.generateToken((user._id as any)?.toString() || '', user.email);
       await user.save();
 
       return { user, accessToken, isNewUser: true };
@@ -156,9 +159,8 @@ class AuthService {
         throw new Error('Invalid email or password');
       }
 
-      // Generate new access token
-      const accessToken = user.generateAccessToken();
-      await user.save();
+      // Generate new JWT access token
+      const accessToken = this.jwtService.generateToken((user._id as any)?.toString() || '', user.email);
 
       return { user, accessToken };
     } catch (error) {
@@ -171,34 +173,17 @@ class AuthService {
    */
   async getCurrentUser(accessToken: string): Promise<IUser | null> {
     try {
-      // console.log('🔐 AuthService.getCurrentUser: Starting token validation...')
-      
-      // Hash the token to compare with stored hash
-      const hashedToken = crypto
-        .createHash('sha256')
-        .update(accessToken)
-        .digest('hex');
-
-      // console.log('🔐 AuthService.getCurrentUser: Token hashed, searching for user...')
-
-      // Find user with this access token and check if it's not expired
-      const user = await User.findOne({
-        accessToken: hashedToken,
-        accessTokenExpires: { $gt: Date.now() }
-      });
-
-      // console.log('🔐 AuthService.getCurrentUser: User found:', !!user)
-      
-      if (user) {
-        // console.log('🔐 AuthService.getCurrentUser: User ID:', user._id)
-        // console.log('🔐 AuthService.getCurrentUser: Token expires at:', user.accessTokenExpires)
-        // console.log('🔐 AuthService.getCurrentUser: Current time:', new Date())
+      // Verify JWT token
+      const payload = this.jwtService.verifyToken(accessToken);
+      if (!payload) {
+        return null;
       }
 
+      // Find user by ID from token payload
+      const user = await User.findById(payload.userId);
       return user;
     } catch (error) {
-      // console.error('🔐 AuthService.getCurrentUser: Error:', error)
-      throw error;
+      return null;
     }
   }
 
@@ -262,31 +247,37 @@ class AuthService {
 
 
   /**
-   * Reset password with access token
+   * Reset password with JWT reset token
    */
   async resetPassword(resetData: ResetPasswordData): Promise<{ message: string }> {
     try {
-      // Hash the access token to compare with stored hash
-      const hashedToken = crypto
-        .createHash('sha256')
-        .update(resetData.accessToken)
-        .digest('hex');
-
-      // Find user with this access token and check if it's not expired
-      const user = await User.findOne({
-        accessToken: hashedToken,
-        accessTokenExpires: { $gt: Date.now() }
-      }).select('+password');
-
-      if (!user) {
-        throw new Error('Invalid or expired access token');
+      // Verify JWT reset token
+      const payload = this.jwtService.verifyToken(resetData.resetToken);
+      
+      if (!payload) {
+        throw new Error('Invalid or expired reset token');
       }
 
-      // Update password
-      user.password = resetData.newPassword;
+      // Check if it's a reset token
+      if (payload.type !== 'reset') {
+        throw new Error('Invalid token type');
+      }
 
-      // Generate new access token after password change
-      user.generateAccessToken();
+      // Find user by ID from token
+      const user = await User.findById(payload.userId).select('+password +lastUsedResetToken');
+      
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Check if this token has already been used
+      if (user.lastUsedResetToken === resetData.resetToken) {
+        throw new Error('Reset token has already been used');
+      }
+
+      // Update password and mark token as used
+      user.password = resetData.newPassword;
+      user.lastUsedResetToken = resetData.resetToken;
       await user.save();
 
       return { message: 'Password reset successfully' };
@@ -365,7 +356,7 @@ class AuthService {
 
 
   /**
-   * Forgot password - send reset email with access token
+   * Forgot password - send reset email with JWT reset token
    */
   async forgotPassword(email: string): Promise<{ message: string }> {
     try {
@@ -375,12 +366,11 @@ class AuthService {
         return { message: 'If an account with that email exists, a password reset link has been sent' };
       }
 
-      // Generate access token for password reset
-      const accessToken = user.generateAccessToken();
-      await user.save();
+      // Generate JWT reset token with short expiration (15 minutes)
+      const resetToken = this.jwtService.generateResetToken((user._id as any)?.toString() || '', user.email);
 
       // Send password reset email
-      await this.emailService.sendPasswordResetEmail(user.email, accessToken, user.firstName);
+      await this.emailService.sendPasswordResetEmail(user.email, resetToken, user.firstName);
 
       return { 
         message: 'If an account with that email exists, a password reset link has been sent'
@@ -393,28 +383,18 @@ class AuthService {
   // ==================== DELETE OPERATIONS ====================
 
   /**
-   * Logout user
+   * Logout user (JWT is stateless, so we just return success)
    */
   async logout(userId: string): Promise<void> {
-    try {
-      const user = await User.findById(userId);
-      if (!user) {
-        throw new Error('User not found');
-      }
-
-      // Clear access token
-      user.accessToken = undefined;
-      user.accessTokenExpires = undefined;
-      await user.save();
-    } catch (error) {
-      throw error;
-    }
+    // JWT is stateless, so we don't need to clear anything from database
+    // The client should remove the token from localStorage
+    return Promise.resolve();
   }
 
 
 
   /**
-   * Clear expired tokens
+   * Clear expired tokens (only email verification and password reset tokens)
    */
   async clearExpiredTokens(): Promise<{ message: string }> {
     try {
@@ -424,8 +404,7 @@ class AuthService {
         {
           $or: [
             { emailVerificationExpires: { $lt: now } },
-            { resetPasswordExpires: { $lt: now } },
-            { accessTokenExpires: { $lt: now } }
+            { resetPasswordExpires: { $lt: now } }
           ]
         },
         {
@@ -433,9 +412,7 @@ class AuthService {
             emailVerificationToken: 1,
             emailVerificationExpires: 1,
             resetPasswordToken: 1,
-            resetPasswordExpires: 1,
-            accessToken: 1,
-            accessTokenExpires: 1
+            resetPasswordExpires: 1
           }
         }
       );
@@ -477,20 +454,18 @@ class AuthService {
    */
   async validateAccessToken(accessToken: string): Promise<boolean> {
     try {
-      const hashedToken = crypto
-        .createHash('sha256')
-        .update(accessToken)
-        .digest('hex');
-
-      const user = await User.findOne({
-        accessToken: hashedToken,
-        accessTokenExpires: { $gt: Date.now() }
-      });
-
-      return !!user;
+      const payload = this.jwtService.verifyToken(accessToken);
+      return !!payload;
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Decode token (for checking token type)
+   */
+  decodeToken(token: string) {
+    return this.jwtService.decodeToken(token);
   }
 }
 

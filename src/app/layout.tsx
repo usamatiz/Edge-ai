@@ -5,6 +5,7 @@ import ClientProviders from "@/components/providers/ClientProviders";
 // import { AuthDebug } from "@/components/dev/AuthDebug";
 import "./globals.css";
 import { Footer, AuthLoader } from "@/components/ui";
+import GlobalNotification from "@/components/ui/global-notification";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -62,6 +63,7 @@ export default function RootLayout({
               {children}
             </main>
             <Footer />
+            <GlobalNotification />
             {/* <AuthDebug /> */}
           </AuthLoader>
         </ClientProviders>

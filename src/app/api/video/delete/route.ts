@@ -1,39 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getS3Service } from '@/server/services/S3.service';
-import User from '@/server/models/User.model';
 import dbConnect from '@/app/lib/mongodb';
+import AuthService from '@/server/services/Auth.service';
+import VideoService from '@/server/services/Video.service';
 
-export async function DELETE(request: NextRequest) {
+const authService = new AuthService();
+const videoService = new VideoService();
+
+export async function POST(request: NextRequest) {
   try {
     await dbConnect();
 
-    const body = await request.json();
-    
-    // Validate required fields
-    const requiredFields = ['userId', 'videoId'];
+    // Get access token from headers
+    const accessToken = request.headers.get('authorization')?.replace('Bearer ', '');
 
-    for (const field of requiredFields) {
-      if (!body[field]) {
-        return NextResponse.json({
-          success: false,
-          message: `Missing required field: ${field}`
-        }, { status: 400 });
-      }
+    if (!accessToken) {
+      return NextResponse.json({
+        success: false,
+        message: 'Access token is required'
+      }, { status: 401 });
     }
 
-    const { userId, videoId } = body;
-
-    // Find the user
-    const user = await User.findById(userId);
+    // Get current user from access token
+    const user = await authService.getCurrentUser(accessToken);
     if (!user) {
       return NextResponse.json({
         success: false,
-        message: 'User not found'
-      }, { status: 404 });
+        message: 'Invalid or expired access token'
+      }, { status: 401 });
     }
 
-    // Find the video
-    const video = user.getVideo(videoId);
+    const body = await request.json();
+    const { videoId } = body;
+
+    // Validate required fields
+    if (!videoId) {
+      return NextResponse.json({
+        success: false,
+        message: 'Video ID is required'
+      }, { status: 400 });
+    }
+
+    // Get video to verify ownership
+    const video = await videoService.getVideo(videoId);
     if (!video) {
       return NextResponse.json({
         success: false,
@@ -41,38 +49,27 @@ export async function DELETE(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Get S3 service
-    const s3Service = getS3Service();
+    // Verify video belongs to user
+    // if (video.userId.toString() !== user._id.toString()) {
+    //   return NextResponse.json({
+    //     success: false,
+    //     message: 'Unauthorized to delete this video'
+    //   }, { status: 403 });
+    // }
 
-    // Delete from S3
-    let s3Deleted = false;
-    try {
-      s3Deleted = await s3Service.deleteVideo(video.s3Key, video.secretKey);
-    } catch (error) {
-      console.error('Error deleting video from S3:', error);
-      // Continue with database deletion even if S3 deletion fails
-    }
+    // Delete video
+    const deleted = await videoService.deleteVideo(videoId);
 
-    // Remove from user's collection
-    const removed = user.removeVideo(videoId);
-    if (!removed) {
+    if (!deleted) {
       return NextResponse.json({
         success: false,
-        message: 'Failed to remove video from database'
+        message: 'Failed to delete video'
       }, { status: 500 });
     }
 
-    // Save user
-    await user.save();
-
     return NextResponse.json({
       success: true,
-      message: 'Video deleted successfully',
-      data: {
-        videoId,
-        s3Deleted,
-        deletedAt: new Date().toISOString()
-      }
+      message: 'Video deleted successfully'
     });
 
   } catch (error: any) {

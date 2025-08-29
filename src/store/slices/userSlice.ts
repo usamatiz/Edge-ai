@@ -26,7 +26,7 @@ const initialState: UserState = {
   accessToken: null,
   tokenExpiry: null,
   isAuthenticated: false,
-  isLoading: false,
+  isLoading: true, // Start with loading true to prevent flickering
   error: null,
 };
 
