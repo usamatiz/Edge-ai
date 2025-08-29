@@ -99,7 +99,7 @@ export function ProcessSteps({ className }: ProcessStepsProps) {
             <div className="grid lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-4">
             {steps.map((step) => (
               <div key={step.id} className="relative">
-                <div className={`rounded-[12px] p-6 text-white h-fit md:min-h-[290px] min-h-[200px] ${step.id === "step-1" ? "bg-[#5046E5]" : "bg-[#6C63F0]"} ${step.id === "set-3"}`}>
+                <div className={`rounded-[12px] p-6 text-white h-fit md:min-h-[290px] min-h-[200px] ${step.id === "step-1" ? "bg-[#5046E5]" : "bg-[#6C63F0]"} ${step.id === "step-3" && "bg-[#8179F0]"}`}>
                   {/* Number Circle */}
                   <div className="w-[40px] h-[40px] rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center mb-4">
                     <span className="text-white font-semibold">{step.number}</span>
