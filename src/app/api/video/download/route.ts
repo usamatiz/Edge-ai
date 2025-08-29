@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Validate required fields - videoUrl and userId
-    const requiredFields = ['videoUrl', 'userId'];
+    const requiredFields = ['videoUrl', 'email', 'title'];
 
     for (const field of requiredFields) {
       if (!body[field] || body[field].trim() === '') {
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { videoUrl, userId, title: providedTitle } = body;
+    const { videoUrl, email, title } = body;
 
     // Generate unique video ID
     const videoId = `video_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`;
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     // Generate title from URL or use provided title or default
     const urlParts = videoUrl.split('/');
     const filename = urlParts[urlParts.length - 1] || `${videoId}.mp4`;
-    let baseTitle = providedTitle || filename.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ') || 'My Video';
+    let baseTitle = title || filename.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ') || 'My Video';
     
     // Clean the title (remove special characters, trim whitespace)
     baseTitle = baseTitle.trim().replace(/[^\w\s-]/g, '').replace(/\s+/g, ' ');
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     let finalTitle = baseTitle;
     let counter = 1;
     
-    while (await videoService.getVideoByTitle(userId, finalTitle)) {
+    while (await videoService.getVideoByTitle(email, finalTitle)) {
       finalTitle = `${baseTitle}-${counter}`;
       counter++;
     }
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     console.log('Video downloaded successfully, size:', videoBuffer.byteLength, 'bytes');
 
     // Create S3 key and secret key
-    const s3Key = s3Service.generateS3Key(userId, videoId, filename);
+    const s3Key = s3Service.generateS3Key(email, videoId, filename);
     const secretKey = crypto.randomBytes(32).toString('hex');
 
     // Upload video to S3
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     // Create video record in database
     const video = await videoService.createVideo({
-      userId,
+      email,
       title: finalTitle,
       s3Key,
       secretKey,

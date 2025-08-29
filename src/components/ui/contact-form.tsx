@@ -153,7 +153,7 @@ export default function ContactForm() {
                     inputMode="numeric"
                     pattern="[0-9]*"
                     placeholder="Phone Number"
-                    maxLength={11}
+                    maxLength={17}
                     onKeyPress={(e) => {
                       // Allow only numbers and backspace
                       if (!/[0-9]/.test(e.key) && e.key !== 'Backspace') {

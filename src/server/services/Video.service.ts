@@ -3,7 +3,7 @@ import { getS3Service } from './S3.service';
 import crypto from 'crypto';
 
 interface CreateVideoData {
-  userId: string;
+  email: string;
   title: string;
   s3Key: string;
   secretKey?: string;
@@ -38,7 +38,7 @@ class VideoService {
 
       const video = new Video({
         videoId,
-        userId: videoData.userId,
+        email: videoData.email,
         title: videoData.title,
         secretKey,
         s3Key: videoData.s3Key,
@@ -57,9 +57,9 @@ class VideoService {
   /**
    * Get all videos for a user
    */
-  async getUserVideos(userId: string): Promise<IVideo[]> {
+  async getUserVideos(email: string): Promise<IVideo[]> {
     try {
-      const videos = await Video.find({ userId })
+      const videos = await Video.find({ email })
         .select('+secretKey') // Include secret key for S3 operations
         .sort({ createdAt: -1 }); // Newest first
       
@@ -255,9 +255,9 @@ class VideoService {
   /**
    * Get video by title for a specific user
    */
-  async getVideoByTitle(userId: string, title: string): Promise<IVideo | null> {
+  async getVideoByTitle(email: string, title: string): Promise<IVideo | null> {
     try {
-      return await Video.findOne({ userId, title });
+      return await Video.findOne({ email, title });
     } catch (error) {
       console.error('Error getting video by title:', error);
       return null;
@@ -267,7 +267,7 @@ class VideoService {
   /**
    * Get video statistics for a user
    */
-  async getUserVideoStats(userId: string): Promise<{
+  async getUserVideoStats(email: string): Promise<{
     totalCount: number;
     readyCount: number;
     processingCount: number;
@@ -275,7 +275,7 @@ class VideoService {
   }> {
     try {
       const stats = await Video.aggregate([
-        { $match: { userId: new Video.base.Types.ObjectId(userId) } },
+        { $match: { email: new Video.base.Types.ObjectId(email) } },
         {
           $group: {
             _id: null,
