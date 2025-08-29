@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getS3Service } from '@/server/services/S3.service';
-import User from '@/server/models/User.model';
-import dbConnect from '@/app/lib/mongodb';
 import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
   try {
-    await dbConnect();
-
     const body = await request.json();
     
-    // Validate required fields - only videoUrl
-    const requiredFields = ['videoUrl'];
+    // Validate required fields - videoUrl and email
+    const requiredFields = ['videoUrl', 'email'];
 
     for (const field of requiredFields) {
       if (!body[field] || body[field].trim() === '') {
@@ -22,40 +18,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { videoUrl, userEmail, metadata } = body;
-
-    // Find the user by email (from request body or get from session)
-    let user;
-    if (userEmail) {
-      user = await User.findOne({ email: userEmail });
-    } else {
-      // TODO: Get user from session/token if userEmail not provided
-      // For now, require userEmail
-      return NextResponse.json({
-        success: false,
-        message: 'User email is required'
-      }, { status: 400 });
-    }
-
-    if (!user) {
-      return NextResponse.json({
-        success: false,
-        message: 'User not found with this email'
-      }, { status: 404 });
-    }
-
-    console.log('User found:', {
-      userId: user._id,
-      email: user.email,
-      hasVideos: !!user.videos,
-      videosLength: user.videos?.length || 0
-    });
-
-    // Ensure videos array exists
-    if (!user.videos) {
-      user.videos = [];
-      console.log('Initialized empty videos array for user');
-    }
+    const { videoUrl, email } = body;
 
     // Generate unique video ID
     const videoId = `video_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`;
@@ -64,16 +27,6 @@ export async function POST(request: NextRequest) {
     const urlParts = videoUrl.split('/');
     const filename = urlParts[urlParts.length - 1] || `${videoId}.mp4`;
     const title = filename.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ') || 'My Video';
-
-    // Check if video already exists for this user
-    // Use direct array find instead of getVideo method to avoid method attachment issues
-    const existingVideo = user.videos.find((video: any) => video.videoId === videoId);
-    if (existingVideo) {
-      return NextResponse.json({
-        success: false,
-        message: 'Video already exists for this user'
-      }, { status: 409 });
-    }
 
     // Get S3 service
     const s3Service = getS3Service();
@@ -98,7 +51,7 @@ export async function POST(request: NextRequest) {
     console.log('Video downloaded successfully, size:', videoBuffer.byteLength, 'bytes');
 
     // Create S3 key and secret key
-    const s3Key = s3Service.generateS3Key((user._id as any).toString(), videoId, filename);
+    const s3Key = s3Service.generateS3Key('public', videoId, filename);
     const secretKey = crypto.randomBytes(32).toString('hex');
 
     // Upload video to S3
@@ -108,7 +61,6 @@ export async function POST(request: NextRequest) {
       Buffer.from(videoBuffer),
       contentType,
       {
-        userId: (user._id as any).toString(),
         videoId,
         secretKey,
         uploadedAt: new Date().toISOString(),
@@ -116,26 +68,6 @@ export async function POST(request: NextRequest) {
     );
 
     console.log('Video uploaded to S3 successfully');
-
-    // Add video to user's collection
-    user.addVideo({
-      videoId,
-      title,
-      secretKey,
-      s3Key,
-      status: 'ready',
-      metadata: {
-        ...metadata,
-        size: videoBuffer.byteLength,
-        format: contentType.split('/')[1] || 'mp4',
-        originalUrl: videoUrl
-      }
-    });
-
-    // Save user
-    await user.save();
-
-    console.log('Video saved to database successfully');
 
     // Return success response
     return NextResponse.json({

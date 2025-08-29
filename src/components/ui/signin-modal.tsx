@@ -76,6 +76,9 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
   const [emailVerificationStatus, setEmailVerificationStatus] = useState<EmailVerificationStatus | null>(null)
   const [showVerificationMessage, setShowVerificationMessage] = useState(false)
+  
+  // Ref to track Google OAuth timeout
+  const googleTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Enhanced security features
   const rateLimiter = useRef(new RateLimiter(5, 60000)) // 5 attempts per minute
@@ -448,6 +451,12 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
   }
 
   const handleClose = useCallback(() => {
+    // Clear Google OAuth timeout if exists
+    if (googleTimeoutRef.current) {
+      clearTimeout(googleTimeoutRef.current)
+      googleTimeoutRef.current = null
+    }
+    
     setFormData({
       email: '',
       password: ''
@@ -462,12 +471,20 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
     setIsGoogleLoading(false)
     setEmailVerificationStatus(null)
     setShowVerificationMessage(false)
+    setShowToast(false)
+    setToastMessage('')
+    setToastType('success')
+    setShowPassword(false)
     onClose()
   }, [onClose])
 
   // Focus management and accessibility
   useEffect(() => {
     if (isOpen) {
+      // Prevent body scroll when modal is open
+      const originalStyle = window.getComputedStyle(document.body).overflow
+      document.body.style.overflow = 'hidden'
+      
       // Focus first input when modal opens
       setTimeout(() => {
         firstInputRef.current?.focus()
@@ -501,16 +518,41 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
       }
 
       document.addEventListener('keydown', handleKeyDown)
-      return () => document.removeEventListener('keydown', handleKeyDown)
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown)
+        // Restore body scroll when modal closes
+        document.body.style.overflow = originalStyle
+      }
     }
   }, [isOpen, handleClose])
 
-  // Load saved email on mount
+  // Load saved email on mount and clear errors when modal opens
   useEffect(() => {
-    const savedEmail = localStorage.getItem('signinEmail')
-    if (savedEmail && !isOpen) {
-      setFormData(prev => ({ ...prev, email: savedEmail }))
-      setRememberMe(true)
+    if (isOpen) {
+      // Clear all error states when modal opens
+      setErrors({
+        email: '',
+        password: ''
+      })
+      setShowToast(false)
+      setToastMessage('')
+      setToastType('success')
+      setEmailVerificationStatus(null)
+      setShowVerificationMessage(false)
+      setIsGoogleLoading(false)
+      
+      // Clear any existing timeout
+      if (googleTimeoutRef.current) {
+        clearTimeout(googleTimeoutRef.current)
+        googleTimeoutRef.current = null
+      }
+    } else {
+      // Load saved email when modal is closed
+      const savedEmail = localStorage.getItem('signinEmail')
+      if (savedEmail) {
+        setFormData(prev => ({ ...prev, email: savedEmail }))
+        setRememberMe(true)
+      }
     }
   }, [isOpen])
 
@@ -782,18 +824,8 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
                 type="button"
                 onClick={handleGoogleSignin}
                 disabled={isGoogleLoading}
-                className={`w-[220px] mx-auto bg-white text-[#344054] py-[9.2px] px-2 rounded-full font-normal text-[16px] border border-[#D0D5DD] transition-colors duration-300 cursor-pointer flex items-center justify-center gap-x-3 ${
-                  isGoogleLoading 
-                    ? 'opacity-50 cursor-not-allowed' 
-                    : 'hover:bg-[#D0D5DD]'
-                }`}
+                className={`w-[220px] mx-auto bg-white text-[#344054] py-[9.2px] px-2 rounded-full font-normal text-[16px] border border-[#D0D5DD] transition-colors duration-300 cursor-pointer flex items-center justify-center gap-x-3`}
               >
-                {isGoogleLoading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
                   <>
                     <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <g clipPath="url(#clip0_7697_226)">
@@ -810,7 +842,6 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
                     </svg>
                     Sign in with Google
                   </>
-                )}
               </button>
 
               {/* Footer Link */}

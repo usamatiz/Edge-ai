@@ -111,16 +111,16 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
 
   const handleSubmit = async () => {
     // Enhanced rate limiting check
-    const clientId = `forgot_password_${formData.email || 'anonymous'}`
-    if (rateLimiter.current.isRateLimited(clientId)) {
-      const remaining = rateLimiter.current.getRemainingAttempts(clientId)
-      const errorMessage = remaining === 0 
-        ? 'Too many password reset attempts. Please wait 5 minutes before trying again.'
-        : `Please wait before trying again. ${remaining} attempts remaining.`
+    // const clientId = `forgot_password_${formData.email || 'anonymous'}`
+    // if (rateLimiter.current.isRateLimited(clientId)) {
+    //   const remaining = rateLimiter.current.getRemainingAttempts(clientId)
+    //   const errorMessage = remaining === 0 
+    //     ? 'Too many password reset attempts. Please wait 5 minutes before trying again.'
+    //     : `Please wait before trying again. ${remaining} attempts remaining.`
       
-      showToastMessage(errorMessage, 'error')
-      return
-    }
+    //   showToastMessage(errorMessage, 'error')
+    //   return
+    // }
 
     // CSRF token validation
     if (!CSRFProtection.validateToken(csrfToken)) {
@@ -187,6 +187,10 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
   // Focus management and accessibility
   useEffect(() => {
     if (isOpen) {
+      // Prevent body scroll when modal is open
+      const originalStyle = window.getComputedStyle(document.body).overflow
+      document.body.style.overflow = 'hidden'
+      
       // Focus first input when modal opens
       setTimeout(() => {
         firstInputRef.current?.focus()
@@ -220,7 +224,11 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
       }
 
       document.addEventListener('keydown', handleKeyDown)
-      return () => document.removeEventListener('keydown', handleKeyDown)
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown)
+        // Restore body scroll when modal closes
+        document.body.style.overflow = originalStyle
+      }
     }
   }, [isOpen, handleClose])
 
@@ -281,11 +289,11 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
               <div className="text-center">
                 <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
                 <h3 className="text-2xl font-semibold text-gray-800 mb-2">Email Sent Successfully!</h3>
-                                 <p className="text-gray-600 mb-4">
-                   We&apos;ve sent a password reset link to <strong>{formData.email}</strong>
+                  <p className="text-gray-600 mb-4">
+                  If an account with <strong>{formData.email}</strong> exists, we&apos;ve sent instructions to reset your password.
                  </p>
                  <p className="text-sm text-gray-500 mb-6">
-                   Didn&apos;t receive the email? Check your spam folder or try again.
+                 If you haven&apos;t received the email, please check your spam folder.
                  </p>
                 <div className="space-y-3">
                   <button

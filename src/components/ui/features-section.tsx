@@ -4,7 +4,9 @@ import * as React from "react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import SignupModal from "./signup-modal";
+import SigninModal from "./signin-modal";
 import EmailVerificationModal from "./email-verification-modal";
+import ForgotPasswordModal from "./forgot-password-modal";
 
 
 interface FeatureItem {
@@ -84,8 +86,10 @@ const featureItems: FeatureItem[] = [
 
 export function FeaturesSection({ className }: FeaturesSectionProps) {
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
+  const [isSigninModalOpen, setIsSigninModalOpen] = useState(false);
   const [isEmailVerificationModalOpen, setIsEmailVerificationModalOpen] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
+  const [isForgotPasswordModalOpen, setisForgotPasswordModalOpen] = useState(false);
 
   const handleSignupClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -94,6 +98,22 @@ export function FeaturesSection({ className }: FeaturesSectionProps) {
 
   const handleCloseSignupModal = () => {
     setIsSignupModalOpen(false);
+  };
+
+  const handleOpenSigninModal = () => {
+    setIsSigninModalOpen(true);
+  };
+
+  const handleCloseSigninModal = () => {
+    setIsSigninModalOpen(false);
+  };
+
+  const handleOpenForgotPasswordModal = () => {
+    setisForgotPasswordModalOpen(true);
+  };
+
+  const handleCloseForgotPasswordModal = () => {
+    setisForgotPasswordModalOpen(false);
   };
 
   return (
@@ -156,10 +176,29 @@ export function FeaturesSection({ className }: FeaturesSectionProps) {
       <SignupModal
         isOpen={isSignupModalOpen}
         onClose={handleCloseSignupModal}
+        onOpenSignin={handleOpenSigninModal}
         onRegistrationSuccess={(email) => {
           setVerificationEmail(email);
           setIsEmailVerificationModalOpen(true);
         }}
+      />
+
+      {/* Signin Modal */}
+      <SigninModal
+        isOpen={isSigninModalOpen}
+        onClose={handleCloseSigninModal}
+        onOpenSignup={() => {
+          setIsSigninModalOpen(false);
+          setIsSignupModalOpen(true);
+        }}
+        onOpenForgotPassword={handleOpenForgotPasswordModal}
+      />
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordModalOpen}
+        onClose={handleCloseForgotPasswordModal}
+        onOpenSignin={handleOpenSigninModal}
       />
 
       {/* Email Verification Modal */}

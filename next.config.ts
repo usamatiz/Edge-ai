@@ -84,6 +84,15 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['dompurify'],
   // Disable X-Powered-By header for security
   poweredByHeader: false,
+  // Configure server timeout (if supported by your hosting platform)
+  serverRuntimeConfig: {
+    // Increase timeout for API routes
+    maxDuration: 1800, // 30 minutes in seconds
+  },
+  // Increase function timeout for Vercel/Cloudflare
+  experimental: {
+    serverComponentsExternalPackages: ['dompurify'],
+  },
 };
 
 export default nextConfig;

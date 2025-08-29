@@ -29,6 +29,24 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## Environment Variables
+
+For video generation functionality, you need to set the following environment variable:
+
+```bash
+# Required for video generation
+GENERATE_VIDEO_WEBHOOK_URL=your_video_generation_webhook_url
+```
+
+## Video Generation Configuration
+
+The video generation process has been configured to handle long-running requests (10-15 minutes):
+
+1. **Backend**: Fire-and-forget approach - sends request to n8n and returns immediately
+2. **Frontend**: Shows success message and allows user to close window
+3. **Simple Approach**: No timeouts, no polling - n8n processes in background
+4. **User Experience**: User can close window and check back later
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.

@@ -239,8 +239,6 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
         case 'email':
           if (!value.trim()) {
             newErrors.email = 'Email is required'
-          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-            newErrors.email = 'Please enter a valid email address'
           }
           break
         case 'phone':
@@ -327,15 +325,8 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
       const data = await response.json()
 
       if (data.success) {
-        // Save form data if "remember form" is checked
-        if (rememberForm) {
-          localStorage.setItem('signupFormData', JSON.stringify({
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            phone: formData.phone,
-          }))
-        }
+        // Clear saved form data from localStorage after successful registration
+        localStorage.removeItem('signupFormData')
 
         // Call the success callback with email
         onRegistrationSuccess?.(formData.email)
@@ -436,6 +427,26 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
           user: data.data.user,
           accessToken: data.data.accessToken
         }))
+
+        // Clear saved form data from localStorage after successful registration
+        localStorage.removeItem('signupFormData')
+        
+        setFormData({
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          password: '',
+          confirmPassword: ''
+        })
+        setErrors({
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          password: '',
+          confirmPassword: ''
+        })
         
         // Show success message
         const welcomeMessage = data.data.isNewUser 
@@ -477,12 +488,21 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
     setIsSubmitting(false)
     setPasswordStrength({ score: 0, feedback: [] })
     setRememberForm(false)
+    setShowToast(false)
+    setToastMessage('')
+    setToastType('success')
+    setShowPassword(false)
+    setShowConfirmPassword(false)
     onClose()
   }, [onClose])
 
   // Focus management and accessibility
   useEffect(() => {
     if (isOpen) {
+      // Prevent body scroll when modal is open
+      const originalStyle = window.getComputedStyle(document.body).overflow
+      document.body.style.overflow = 'hidden'
+      
       // Focus first input when modal opens
       setTimeout(() => {
         firstInputRef.current?.focus()
@@ -516,19 +536,51 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
       }
 
       document.addEventListener('keydown', handleKeyDown)
-      return () => document.removeEventListener('keydown', handleKeyDown)
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown)
+        // Restore body scroll when modal closes
+        document.body.style.overflow = originalStyle
+      }
     }
   }, [isOpen, handleClose])
 
-  // Load saved form data on mount
+  // Load saved form data on mount and clear errors when modal opens
   useEffect(() => {
-    const savedData = localStorage.getItem('signupFormData')
-    if (savedData && !isOpen) {
-      try {
-        const parsedData = JSON.parse(savedData)
-        setFormData(prev => ({ ...prev, ...parsedData }))
-      } catch (error) {
-        console.error('Error loading saved form data:', error)
+    if (isOpen) {
+      // Clear all error states and form data when modal opens
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: ''
+      })
+      setErrors({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: ''
+      })
+      setShowToast(false)
+      setToastMessage('')
+      setToastType('success')
+      setPasswordStrength({ score: 0, feedback: [] })
+      setIsSubmitting(false)
+      setShowPassword(false)
+      setShowConfirmPassword(false)
+    } else {
+      // Load saved form data when modal is closed (only if there's saved data)
+      const savedData = localStorage.getItem('signupFormData')
+      if (savedData) {
+        try {
+          const parsedData = JSON.parse(savedData)
+          setFormData(prev => ({ ...prev, ...parsedData }))
+        } catch (error) {
+          console.error('Error loading saved form data:', error)
+        }
       }
     }
   }, [isOpen])

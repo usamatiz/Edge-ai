@@ -62,7 +62,7 @@ export default function PreviousVideosGallery({ className }: PreviousVideosGalle
       setLoading(true)
       setError(null)
 
-      const response = await fetch('/api/auth/video/gallery', {
+      const response = await fetch('/api/video/gallery', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
