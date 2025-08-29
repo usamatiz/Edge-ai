@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import AuthService from '../../../../server/services/Auth.service';
 import { initializeDatabase } from '../../../lib/database';
-import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/rate-limit-middleware';
 
 const authService = new AuthService();
-const rateLimitMiddleware = createRateLimitMiddleware(rateLimitConfigs.forgotPassword);
 
 export async function POST(request: NextRequest) {
-  // Apply rate limiting
-  const rateLimitResponse = rateLimitMiddleware(request);
-  if (rateLimitResponse) {
-    return rateLimitResponse;
-  }
+
   try {
     // Initialize database connection
     await initializeDatabase();

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
+  console.log('=== VIDEO GENERATION API CALLED ===');
   try {
     const body = await request.json();
+    console.log('Request body received:', body);
     
     // Validate required fields
     const requiredFields = [
@@ -25,6 +27,7 @@ export async function POST(request: NextRequest) {
 
     // Webhook URL for video generation
     const webhookUrl = process.env.GENERATE_VIDEO_WEBHOOK_URL;
+    console.log('Webhook URL:', webhookUrl);
     if (!webhookUrl) {
       throw new Error('GENERATE_VIDEO_WEBHOOK_URL environment variable is not set');
     }
@@ -51,80 +54,49 @@ export async function POST(request: NextRequest) {
     console.log('Sending request to video generation webhook:', webhookUrl);
     console.log('Webhook data:', webhookData);
 
-    // Send request to webhook with long timeout for video generation
-    const webhookResponse = await fetch(webhookUrl, {
+    // Generate a unique request ID
+    const requestId = `video_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Fire and forget approach - send request to n8n and return immediately
+    // This prevents platform timeout issues when n8n takes 10-15 minutes
+    console.log('Sending request to n8n webhook (fire and forget)...');
+    
+    // Send the request without waiting for response
+    fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(webhookData),
-      signal: AbortSignal.timeout(900000) // 15 minutes timeout for video generation
+      body: JSON.stringify({
+        ...webhookData,
+        requestId: requestId
+      })
+    }).then(response => {
+      console.log('Response web hook n8n', response);
+      console.log('N8n webhook request sent successfully, status:', response.status);
+    }).catch(error => {
+      console.error('N8n webhook request failed:', error);
     });
 
-    if (!webhookResponse.ok) {
-      const errorDetails = await webhookResponse.text();
-      console.error('Webhook error:', {
-        status: webhookResponse.status,
-        statusText: webhookResponse.statusText,
-        details: errorDetails
-      });
-      
-      // Handle specific error codes
-      let errorMessage = `Failed to generate video. Webhook returned ${webhookResponse.status}`;
-      let statusCode = 502;
-      
-      if (webhookResponse.status === 524) {
-        errorMessage = 'Video generation service is currently experiencing high load. Please try again in a few minutes.';
-        statusCode = 503; // Service Unavailable
-      } else if (webhookResponse.status >= 500) {
-        errorMessage = 'Video generation service is temporarily unavailable. Please try again later.';
-        statusCode = 503;
-      } else if (webhookResponse.status === 429) {
-        errorMessage = 'Too many video generation requests. Please wait a moment before trying again.';
-        statusCode = 429;
+
+
+    // Return immediately with request ID
+    console.log('Video generation request sent, returning request ID:', requestId);
+    
+    const response = {
+      success: true,
+      message: 'Video generation started successfully',
+      data: {
+        status: 'processing',
+        request_id: requestId,
+        timestamp: new Date().toISOString(),
+        estimated_completion: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 minutes estimate
+        note: 'Video generation is running in the background. The video will be available when ready.'
       }
-      
-      return NextResponse.json({
-        success: false,
-        message: errorMessage,
-        error: `Webhook error: ${webhookResponse.status}`,
-        details: errorDetails
-      }, { status: statusCode });
-    }
-
-    const webhookResult = await webhookResponse.json();
-    console.log('Webhook response received:', webhookResult);
-
-    // Check if the response contains videoUrl
-    if (webhookResult.videoUrl || webhookResult.data?.videoUrl || webhookResult.url) {
-      const videoUrl = webhookResult.videoUrl || webhookResult.data?.videoUrl || webhookResult.url;
-      
-      console.log('Video URL found in response:', videoUrl);
-
-      return NextResponse.json({
-        success: true,
-        message: 'Video generated successfully',
-        data: {
-          videoUrl: videoUrl,
-          status: 'ready',
-          timestamp: new Date().toISOString(),
-          webhookResponse: webhookResult
-        }
-      });
-    } else {
-      // If no video URL, return processing status
-      console.log('No video URL in response, video is still processing');
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Video generation started, waiting for completion',
-        data: {
-          status: 'processing',
-          timestamp: new Date().toISOString(),
-          webhookResponse: webhookResult
-        }
-      });
-    }
+    };
+    
+    console.log('Returning response:', response);
+    return NextResponse.json(response);
 
   } catch (error: any) {
     console.error('Error in video generation API:', error);

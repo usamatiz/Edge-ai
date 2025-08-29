@@ -11,7 +11,7 @@ const contactFormSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),
   position: z.string().min(2, 'Position must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
-  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
+  phone: z.string().min(10, 'Phone number must be at least 10 digits').regex(/^\d+$/, 'Phone number must contain only digits'),
   question: z.string().min(10, 'Question must be at least 10 characters')
 })
 
@@ -83,19 +83,8 @@ export default function ContactForm() {
 
             {/* Main Heading */}
             <div className="space-y-2">
-              <h2 className="md:text-[63px] text-[48px] md:leading-[63px] leading-[48px] font-semibold text-[#282828]">
-                <div className="flex items-end mb-2">
-                  Real People
-                  <span className="w-3 h-3 bg-[#5046E5] rounded-full ml-1 mb-[8px]"></span>
-                </div>
-                <div className="flex items-end mb-2">
-                  Real Support
-                  <span className="w-3 h-3 bg-[#5046E5] rounded-full ml-1 mb-[8px]"></span>
-                </div>
-                <div className="flex items-end">
-                  Real Easy
-                  <span className="w-3 h-3 bg-[#5046E5] rounded-full ml-1 mb-[8px]"></span>
-                </div>
+              <h2 className="md:text-[38px] text-[3px] md:leading-[46px] font-semibold text-[#282828]">
+              We get it. Sometimes you <br className='md:block hidden'/> just need to talk to a <br className='md:block hidden'/> human - reach out to us here.
               </h2>
             </div>
 
@@ -160,8 +149,17 @@ export default function ContactForm() {
                 <div>
                   <input
                     {...register('phone')}
-                    type="tel"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     placeholder="Phone Number"
+                    maxLength={11}
+                    onKeyPress={(e) => {
+                      // Allow only numbers and backspace
+                      if (!/[0-9]/.test(e.key) && e.key !== 'Backspace') {
+                        e.preventDefault();
+                      }
+                    }}
                     className={`w-full px-4 py-3 bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white ${
                       errors.phone ? 'ring-2 ring-red-500' : ''
                     }`}
