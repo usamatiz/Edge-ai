@@ -53,7 +53,7 @@ function ResetPasswordContent() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ accessToken: token }),
+        body: JSON.stringify({ token }),
       })
 
       const data = await response.json()
@@ -132,7 +132,7 @@ function ResetPasswordContent() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          accessToken: token,
+          resetToken: token,
           newPassword: formData.password,
         }),
       })

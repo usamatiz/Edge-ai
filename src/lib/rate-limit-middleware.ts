@@ -184,22 +184,32 @@ export const rateLimitConfigs = {
   },
   
   // Password reset attempts: 3 per hour
-  forgotPassword: {
+  passwordReset: {
     maxAttempts: 3,
     windowMs: 60 * 60 * 1000, // 1 hour
     keyGenerator: (request: NextRequest) => {
       const ip = getClientIdentifier(request);
-      return `forgot_password:${ip}`;
+      return `password_reset:${ip}`;
     }
   },
   
-  // General API requests: 100 per minute
+  // Email verification attempts: 5 per hour
+  emailVerification: {
+    maxAttempts: 5,
+    windowMs: 60 * 60 * 1000, // 1 hour
+    keyGenerator: (request: NextRequest) => {
+      const ip = getClientIdentifier(request);
+      return `email_verification:${ip}`;
+    }
+  },
+  
+  // General auth requests: 60 per minute
   general: {
-    maxAttempts: 100,
+    maxAttempts: 60,
     windowMs: 60 * 1000, // 1 minute
     keyGenerator: (request: NextRequest) => {
       const ip = getClientIdentifier(request);
-      return `general:${ip}`;
+      return `auth_general:${ip}`;
     }
   },
   

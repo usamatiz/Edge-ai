@@ -30,10 +30,7 @@ export default function AuthLoader({ children }: AuthLoaderProps) {
                 <div className="w-full h-full border-4 border-transparent border-t-[#5046E5] rounded-full animate-spin"></div>
             </div>
             
-            {/* Loading Text */}
-            <p className="text-[#667085] text-sm font-medium">
-              Checking authentication...
-            </p>
+            {/* Loading Text - Removed authentication message */}
           </div>
         </div>
       </div>

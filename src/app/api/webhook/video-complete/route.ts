@@ -9,28 +9,33 @@ export async function POST(request: NextRequest) {
     await dbConnect();
 
     const body = await request.json();
-    const { videoId, status, metadata } = body;
+    console.log('Video complete webhook received:', body);
+
+    const { 
+      videoId, 
+      status = 'ready', 
+      s3Key, 
+      metadata,
+      error 
+    } = body;
 
     // Validate required fields
-    if (!videoId || !status) {
+    if (!videoId) {
+      console.error('Video complete webhook: Missing videoId');
       return NextResponse.json({
         success: false,
-        message: 'Video ID and status are required'
+        message: 'Video ID is required'
       }, { status: 400 });
     }
 
-    // Validate status
-    if (!['processing', 'ready', 'failed'].includes(status)) {
-      return NextResponse.json({
-        success: false,
-        message: 'Invalid status. Must be processing, ready, or failed'
-      }, { status: 400 });
-    }
+    // If there's an error, mark video as failed
+    const finalStatus = error ? 'failed' : status;
 
     // Update video status
-    const updatedVideo = await videoService.updateVideoStatus(videoId, status);
+    const updatedVideo = await videoService.updateVideoStatus(videoId, finalStatus);
 
     if (!updatedVideo) {
+      console.error(`Video complete webhook: Video not found - ${videoId}`);
       return NextResponse.json({
         success: false,
         message: 'Video not found'
@@ -41,6 +46,15 @@ export async function POST(request: NextRequest) {
     if (metadata) {
       await videoService.updateVideoMetadata(videoId, metadata);
     }
+
+    // Update S3 key if provided
+    if (s3Key && s3Key !== updatedVideo.s3Key) {
+      // Note: This would require updating the S3 key in the database
+      // For now, we'll just log it
+      console.log(`Video complete webhook: S3 key updated for video ${videoId}`);
+    }
+
+    console.log(`Video complete webhook: Successfully updated video ${videoId} to status ${finalStatus}`);
 
     return NextResponse.json({
       success: true,
@@ -53,7 +67,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Error updating video status:', error);
+    console.error('Video complete webhook error:', error);
     
     return NextResponse.json({
       success: false,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authMiddleware } from '@/lib/auth-middleware-simple';
 
 // Rate limiting storage (in production, use Redis or a proper database)
 const requestCounts = new Map<string, { count: number; timestamp: number }>();
@@ -15,7 +16,7 @@ function generateRequestId(): string {
 }
 
 /**
- * Simple rate limiting middleware
+ * Simple rate limiting middleware for non-auth routes
  * @param req - The incoming request
  * @returns Response if rate limited, otherwise continues
  */
@@ -135,14 +136,18 @@ function validateRequest(req: NextRequest) {
 function shouldExcludeFromRateLimit(req: NextRequest): boolean {
   const { pathname } = req.nextUrl;
   
-  // Exclude video creation endpoints from rate limiting
+  // Exclude auth routes from general rate limiting (they have their own)
+  if (pathname.startsWith('/api/auth/')) {
+    return true;
+  }
+  
+  // Exclude other video endpoints from rate limiting
   const excludedPaths = [
-    '/api/auth/create-video',
-    '/api/auth/create-video/generate-video',
-    '/api/auth/video/download',
-    '/api/auth/video/gallery',
-    '/api/auth/video/status',
-    '/api/auth/video/delete'
+    '/api/video/download',
+    '/api/video/gallery',
+    '/api/video/status',
+    '/api/video/delete',
+    '/api/webhook/'
   ];
   
   return excludedPaths.some(path => pathname.startsWith(path));
@@ -153,30 +158,49 @@ function shouldExcludeFromRateLimit(req: NextRequest): boolean {
  * @param req - The NextRequest
  * @returns NextResponse
  */
-export function middleware(req: NextRequest) {
-  // Skip middleware entirely for API routes to prevent body reading issues
-  if (req.nextUrl.pathname.startsWith('/api/')) {
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  
+  console.log(`🌐 Main Middleware: Processing ${req.method} ${pathname}`);
+  
+  // 1. Handle auth routes with specialized middleware
+  if (pathname.startsWith('/api/auth/')) {
+    console.log(`🔐 Main Middleware: Delegating to auth middleware for ${pathname}`);
+    const authResponse = await authMiddleware(req);
+    if (authResponse) {
+      return authResponse;
+    }
+    // Continue with security headers
+    const response = NextResponse.next();
+    return addSecurityHeaders(response);
+  }
+  
+  // 2. Skip middleware for other API routes to prevent body reading issues
+  if (pathname.startsWith('/api/')) {
+    console.log(`🌐 Main Middleware: Skipping API route ${pathname}`);
     return NextResponse.next();
   }
   
-  // DISABLED: Validate request for suspicious patterns (for network testing)
-  // const validationResult = validateRequest(req);
-  // if (validationResult) {
-  //   return validationResult;
-  // }
+  // 3. Validate request for suspicious patterns (for non-API routes)
+  const validationResult = validateRequest(req);
+  if (validationResult) {
+    console.log(`🌐 Main Middleware: Request blocked for ${pathname}`);
+    return validationResult;
+  }
   
-  // DISABLED: Apply rate limiting (for network testing)
-  // if (!shouldExcludeFromRateLimit(req)) {
-  //   const rateLimitResult = rateLimit(req);
-  //   if (rateLimitResult) {
-  //     return rateLimitResult;
-  //   }
-  // }
+  // 4. Apply rate limiting for non-API routes
+  if (!shouldExcludeFromRateLimit(req)) {
+    const rateLimitResult = rateLimit(req);
+    if (rateLimitResult) {
+      console.log(`🌐 Main Middleware: Rate limited ${pathname}`);
+      return rateLimitResult;
+    }
+  }
   
-  // Continue with the request
+  // 5. Continue with the request
   const response = NextResponse.next();
   
-  // Add security headers
+  // 6. Add security headers
   return addSecurityHeaders(response);
 }
 
@@ -187,11 +211,10 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

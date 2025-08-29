@@ -200,7 +200,7 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
         webhookResponse: result.data.webhookResponse
       }
       
-      // Store in Redux
+      // Store in Redux (this will also save videoTopic to state)
       dispatch(createVideoRequest(videoRequest))
       
       // Open modal with webhook response data

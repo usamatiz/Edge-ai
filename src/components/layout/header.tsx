@@ -51,7 +51,7 @@ export function Header() {
   const { trackNavigation, trackButtonClick } = useAnalytics();
   
   // Use Redux for authentication state
-  const { isAuthenticated } = useAppSelector((state) => state.user);
+  const { isAuthenticated, isLoading } = useAppSelector((state) => state.user);
   
   // Track active section based on scroll position (only on home page)
   const sectionIds = ['getting-started', 'how-it-works', 'benefits', 'pricing', 'faq', 'contact'];
@@ -175,7 +175,13 @@ export function Header() {
 
             {/* Desktop Action Buttons */}
             <div className="hidden lg:flex items-center space-x-3">
-              {isAuthenticated ? (
+              {isLoading ? (
+                // Show loading skeleton during authentication check
+                <div className="flex items-center space-x-3">
+                  <div className="w-16 h-9 bg-gray-200 rounded-full animate-pulse"></div>
+                  <div className="w-20 h-9 bg-gray-200 rounded-full animate-pulse"></div>
+                </div>
+              ) : isAuthenticated ? (
                 <ProfileDropdown />
               ) : (
                 <>

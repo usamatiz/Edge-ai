@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
@@ -9,14 +9,25 @@ function VerifyEmailContent() {
   const router = useRouter();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
+  const hasVerifiedRef = useRef(false);
+  const tokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     const verifyEmail = async () => {
       const token = searchParams.get('token');
       
+      // Prevent multiple verification attempts for the same token
+      if (hasVerifiedRef.current || !token || tokenRef.current === token) {
+        return;
+      }
+
+      // Store the token to prevent re-verification
+      tokenRef.current = token;
+      
       if (!token) {
         setStatus('error');
         setMessage('Verification token is missing');
+        hasVerifiedRef.current = true;
         return;
       }
 
@@ -33,18 +44,29 @@ function VerifyEmailContent() {
         if (data.success) {
           setStatus('success');
           setMessage(data.message || 'Email verified successfully!');
+          hasVerifiedRef.current = true;
         } else {
           setStatus('error');
           setMessage(data.message || 'Email verification failed');
+          hasVerifiedRef.current = true;
         }
       } catch (error) {
+        console.error('Verification error:', error);
         setStatus('error');
         setMessage('An error occurred during verification');
+        hasVerifiedRef.current = true;
       }
     };
 
     verifyEmail();
-  }, [searchParams, router]);
+  }, [searchParams]); // Include searchParams in dependency array
+
+  // Prevent any state updates if component unmounts or verification is complete
+  useEffect(() => {
+    return () => {
+      hasVerifiedRef.current = true;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -99,12 +121,12 @@ function VerifyEmailContent() {
                   >
                     Go to Home Page
                   </button>
-                  <button
+                  {/* <button
                     onClick={() => router.push('/?showLogin=true')}
                     className="w-full py-[11.4px] px-6 rounded-full font-semibold text-[20px] border-2 border-[#5046E5] text-[#5046E5] hover:bg-[#5046E5] hover:text-white transition-colors duration-300 cursor-pointer"
                   >
                     Sign In Now
-                  </button>
+                  </button> */}
                 </div>
               </div>
             )}
@@ -171,4 +193,3 @@ export default function VerifyEmailPage() {
     </Suspense>
   );
 }
-

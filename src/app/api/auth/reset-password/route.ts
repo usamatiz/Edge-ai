@@ -10,17 +10,17 @@ export async function POST(request: NextRequest) {
     await initializeDatabase();
     
     const body = await request.json();
-    const { accessToken, newPassword } = body;
+    const { resetToken, newPassword } = body;
 
-    if (!accessToken || !newPassword) {
+    if (!resetToken || !newPassword) {
       return NextResponse.json({
         success: false,
-        message: 'Access token and new password are required'
+        message: 'Reset token and new password are required'
       }, { status: 400 });
     }
 
     const result = await authService.resetPassword({
-      accessToken,
+      resetToken,
       newPassword
     });
 

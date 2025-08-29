@@ -6,6 +6,7 @@ import { sanitizeInput, RateLimiter, CSRFProtection } from '@/lib/utils'
 import { isPasswordValidForLogin } from '@/lib/password-validation'
 import { useAppDispatch } from '@/store/hooks'
 import { setUser } from '@/store/slices/userSlice'
+import { validateAndHandleToken } from '@/lib/jwt-client'
 
 // Google OAuth TypeScript declarations
 declare global {
@@ -249,13 +250,20 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
       const data = await response.json()
 
       if (data.success) {
+        // Validate JWT token before storing
+        const accessToken = data.data.accessToken;
+        if (!validateAndHandleToken(accessToken)) {
+          showToastMessage('Invalid token received. Please try again.', 'error');
+          return;
+        }
+        
         // Store the access token
-        localStorage.setItem('accessToken', data.data.accessToken)
+        localStorage.setItem('accessToken', accessToken)
         
         // Dispatch Redux action to set user data
         dispatch(setUser({
           user: data.data.user,
-          accessToken: data.data.accessToken
+          accessToken: accessToken
         }))
         
                  // Show success message
