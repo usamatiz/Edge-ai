@@ -219,9 +219,9 @@ class VideoService {
   /**
    * Get user videos with download URLs
    */
-  async getUserVideosWithDownloadUrls(userId: string): Promise<IVideo[]> {
+  async getUserVideosWithDownloadUrls(email: string): Promise<IVideo[]> {
     try {
-      const videos = await Video.find({ userId })
+      const videos = await Video.find({ email })
         .select('+secretKey')
         .sort({ createdAt: -1 });
 
@@ -230,14 +230,21 @@ class VideoService {
         videos.map(async (video) => {
           if (video.status === 'ready') {
             try {
+              console.log(`Generating download URL for video ${video.videoId} with s3Key: ${video.s3Key}`);
               const downloadResult = await this.s3Service.createDownloadUrl(
                 video.s3Key,
                 video.secretKey,
                 3600 // 1 hour
               );
               (video as any).downloadUrl = downloadResult.downloadUrl;
+              console.log(`Successfully generated download URL for video ${video.videoId}`);
             } catch (s3Error) {
               console.error(`Error creating download URL for video ${video.videoId}:`, s3Error);
+              console.error(`Video details:`, {
+                s3Key: video.s3Key,
+                secretKey: video.secretKey,
+                status: video.status
+              });
               // Continue without download URL
             }
           }
@@ -275,7 +282,7 @@ class VideoService {
   }> {
     try {
       const stats = await Video.aggregate([
-        { $match: { email: new Video.base.Types.ObjectId(email) } },
+        { $match: { email: email } },
         {
           $group: {
             _id: null,
