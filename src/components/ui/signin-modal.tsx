@@ -110,7 +110,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
     // Auto hide toast after 3 seconds
     setTimeout(() => {
       setShowToast(false)
-    }, 10000)
+    }, 3000)
   }
 
   const handleInputChange = (field: keyof FormData, value: string) => {
@@ -279,10 +279,10 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
           localStorage.removeItem('signinEmail')
         }
 
-        // Close modal after success message
+        // Close modal after success message (give user time to see the toast)
         setTimeout(() => {
-          onClose()
-        }, 2000)
+          handleSuccessfulClose()
+        }, 3000)
       } else {
         // Check if the error is due to email verification
         if (data.data && data.data.requiresVerification) {
@@ -391,10 +391,10 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
            : 'Welcome to EdgeAi!'
          showToastMessage(welcomeMessage, 'success')
         
-        // Close modal
+        // Close modal after success message (give user time to see the toast)
         setTimeout(() => {
-          onClose()
-        }, 100)
+          handleSuccessfulClose()
+        }, 3000)
       } else {
         // Check if the error is due to email verification
         if (data.data && data.data.requiresVerification) {
@@ -477,6 +477,32 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
     setShowToast(false)
     setToastMessage('')
     setToastType('success')
+    setShowPassword(false)
+    onClose()
+  }, [onClose])
+
+  const handleSuccessfulClose = useCallback(() => {
+    // Clear Google OAuth timeout if exists
+    if (googleTimeoutRef.current) {
+      clearTimeout(googleTimeoutRef.current)
+      googleTimeoutRef.current = null
+    }
+    
+    setFormData({
+      email: '',
+      password: ''
+    })
+    setErrors({
+      email: '',
+      password: ''
+    })
+    setShowSuccess(false)
+    setIsSubmitting(false)
+    setRememberMe(false)
+    setIsGoogleLoading(false)
+    setEmailVerificationStatus(null)
+    setShowVerificationMessage(false)
+    // Don't clear toast - let it stay visible
     setShowPassword(false)
     onClose()
   }, [onClose])

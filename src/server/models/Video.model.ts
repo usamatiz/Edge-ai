@@ -3,7 +3,8 @@ import mongoose, { Document, Schema } from 'mongoose';
 // Video interface
 export interface IVideo extends Document {
   videoId: string;
-  userId: mongoose.Types.ObjectId;
+  userId?: mongoose.Types.ObjectId;
+  email: string;
   title: string;
   secretKey: string;
   s3Key: string;
@@ -28,10 +29,15 @@ const videoSchema = new Schema<IVideo>({
     unique: true,
     index: true
   },
+  email: {
+    type: String,
+    required: true,
+    index: true,
+    trim: true
+  },
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
     index: true
   },
   title: {
@@ -80,6 +86,7 @@ videoSchema.methods.updateMetadata = async function(metadata: Partial<IVideo['me
 
 // Indexes for better query performance
 videoSchema.index({ userId: 1, createdAt: -1 }); // For user's video gallery
+videoSchema.index({ email: 1, createdAt: -1 }); // For email-based queries
 videoSchema.index({ status: 1, createdAt: -1 }); // For status-based queries
 videoSchema.index({ s3Key: 1 }); // For S3 key lookups
 

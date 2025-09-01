@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getS3Service } from '@/server/services/S3.service';
 import VideoService from '@/server/services/Video.service';
 import crypto from 'crypto';
+import dbConnect from '@/app/lib/mongodb';
 
 export async function POST(request: NextRequest) {
   try {
+    // Ensure database connection is established before any DB operation
+    await dbConnect();
+    
     const body = await request.json();
     
     // Validate required fields - videoUrl and userId

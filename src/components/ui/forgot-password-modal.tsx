@@ -285,7 +285,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
 
           {/* Success Message */}
           {showSuccess && (
-            <div className="absolute inset-0 bg-white rounded-[12px] flex items-center justify-center z-10">
+            <div className="absolute inset-0 bg-white px-4 rounded-[12px] flex items-center justify-center z-10">
               <div className="text-center">
                 <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
                 <h3 className="text-2xl font-semibold text-gray-800 mb-2">Email Sent Successfully!</h3>
