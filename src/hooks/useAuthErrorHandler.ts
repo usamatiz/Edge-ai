@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAppDispatch } from '@/store/hooks'
 import { clearUser } from '@/store/slices/userSlice'
 import { useNotificationStore } from '@/components/ui/global-notification'
+import { isTokenExpired } from '@/lib/jwt-client'
 
 export function useAuthErrorHandler() {
   const router = useRouter()
@@ -27,26 +28,27 @@ export function useAuthErrorHandler() {
           if (responseData.message?.includes('token') || 
               responseData.message?.includes('unauthorized') ||
               responseData.message?.includes('expired')) {
+            // Safeguard: only force logout if the client-side token is missing or actually expired
+            const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
+            const shouldLogout = !token || isTokenExpired(token)
+
+            if (shouldLogout) {
+              console.log('🔐 Auth Error Handler: Token expired or invalid, logging out user')
+              dispatch(clearUser())
+              showNotification('Token expired. Please login again.', 'error')
+              router.push('/')
+              return new Response(JSON.stringify({ 
+                success: false, 
+                message: 'Token expired. Please login again.' 
+              }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' }
+              })
+            }
             
-            console.log('🔐 Auth Error Handler: Token expired or invalid, logging out user')
-            
-            // Clear user data from Redux
-            dispatch(clearUser())
-            
-            // Show notification
-            showNotification('Token expired. Please login again.', 'error')
-            
-            // Redirect to home page
-            router.push('/')
-            
-            // Return a modified response to prevent further processing
-            return new Response(JSON.stringify({ 
-              success: false, 
-              message: 'Token expired. Please login again.' 
-            }), {
-              status: 401,
-              headers: { 'Content-Type': 'application/json' }
-            })
+            // If token exists and is not expired client-side, don't auto-logout; let the caller handle the 401
+            console.log('🔐 Auth Error Handler: 401 received but token appears valid client-side; not logging out')
+            return response
           }
         }
         
