@@ -159,8 +159,14 @@ export async function authMiddleware(request: NextRequest): Promise<NextResponse
     return rateLimitResponse;
   }
   
-  // 2. CSRF protection for non-GET requests on protected routes only (excluding video routes)
-  if (request.method !== 'GET' && requiresAuth(pathname) && !AUTH_ROUTES.VIDEO.some(route => pathname.startsWith(route))) {
+  // 2. CSRF protection for non-GET requests on protected routes only (excluding video routes and profile updates)
+  //    Profile updates are allowed without CSRF for simpler client integration
+  if (
+    request.method !== 'GET' &&
+    requiresAuth(pathname) &&
+    !AUTH_ROUTES.VIDEO.some(route => pathname.startsWith(route)) &&
+    !pathname.startsWith('/api/auth/profile')
+  ) {
     const csrfToken = request.headers.get('x-csrf-token');
     if (!csrfToken || !ServerCSRFProtection.validateToken(csrfToken)) {
       console.log(`🔐 Auth Middleware: CSRF validation failed for ${pathname}`);

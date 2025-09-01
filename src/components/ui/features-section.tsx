@@ -162,7 +162,7 @@ export function FeaturesSection({ className }: FeaturesSectionProps) {
             <h3 className="text-[28px] md:text-[32px] font-semibold mb-6 text-left leading-tight">
               Get Started Today
             </h3>
-            {!isAuthenticated ? (
+            {!isAuthenticated && (
             <button
               onClick={handleSignupClick}
               className="group hover:bg-white border hover:border-[#6366f1] border-white text-white hover:text-[#6366f1] bg-transparent px-4 w-full py-[11.2px] rounded-full text-[14px] md:text-[16px] justify-between font-normal cursor-pointer transition-all duration-300 flex items-center"
@@ -172,10 +172,6 @@ export function FeaturesSection({ className }: FeaturesSectionProps) {
                 <path d="M1 7.01097L16.8124 6.99999M11.5858 13L17 6.99999L11.5858 1" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
-            ) : (
-              <div className="text-white/90 text-[16px] leading-relaxed">
-                You&apos;re all set! Start creating amazing AI-powered videos for your real estate business.
-              </div>
             )}
           </div>
         </div>

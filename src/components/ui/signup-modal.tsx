@@ -154,7 +154,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
     // Auto hide toast after 3 seconds
     setTimeout(() => {
       setShowToast(false)
-    }, 10000)
+    }, 3000)
   }
 
   const handleInputChange = (field: keyof FormData, value: string) => {
@@ -315,11 +315,16 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
         // Clear saved form data from localStorage after successful registration
         localStorage.removeItem('signupFormData')
 
+        // Show success message
+        showToastMessage('Account created successfully! Please check your email for verification.', 'success')
+        
         // Call the success callback with email
         onRegistrationSuccess?.(formData.email)
         
-        // Close the signup modal
-        onClose()
+        // Close the signup modal after showing success message
+        setTimeout(() => {
+          handleSuccessfulClose()
+        }, 3000)
 
       } else {
         // Handle specific error cases
@@ -448,10 +453,10 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
           : `Welcome back to EdgeAi, ${data.data.user.firstName}!`
         showToastMessage(welcomeMessage, 'success')
         
-        // Close modal
+        // Close modal after success message (give user time to see the toast)
         setTimeout(() => {
-          onClose()
-        }, 100)
+          handleSuccessfulClose()
+        }, 3000)
       } else {
         showToastMessage(data.message || 'Google signup failed. Please try again.', 'error')
       }
@@ -485,6 +490,33 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
     setShowToast(false)
     setToastMessage('')
     setToastType('success')
+    setShowPassword(false)
+    setShowConfirmPassword(false)
+    onClose()
+  }, [onClose])
+
+  const handleSuccessfulClose = useCallback(() => {
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: ''
+    })
+    setErrors({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: ''
+    })
+    setShowSuccess(false)
+    setIsSubmitting(false)
+    setPasswordStrength({ score: 0, feedback: [] })
+    setRememberForm(false)
+    // Don't clear toast - let it stay visible
     setShowPassword(false)
     setShowConfirmPassword(false)
     onClose()
