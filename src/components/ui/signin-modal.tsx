@@ -110,7 +110,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
     // Auto hide toast after 3 seconds
     setTimeout(() => {
       setShowToast(false)
-    }, 3000)
+    }, 10000)
   }
 
   const handleInputChange = (field: keyof FormData, value: string) => {
@@ -272,11 +272,6 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
            : 'Login successful! Welcome back to EdgeAi.'
          showToastMessage(welcomeMessage, 'success')
         
-        // Close modal immediately after successful login
-        setTimeout(() => {
-          onClose()
-        }, 100)
-        
         // Save email if "remember me" is checked
         if (rememberMe) {
           localStorage.setItem('signinEmail', formData.email)
@@ -284,9 +279,9 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
           localStorage.removeItem('signinEmail')
         }
 
-        // Auto-close after success message
+        // Close modal after success message
         setTimeout(() => {
-          handleClose()
+          onClose()
         }, 2000)
       } else {
         // Check if the error is due to email verification
@@ -537,7 +532,11 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
   // Load saved email on mount and clear errors when modal opens
   useEffect(() => {
     if (isOpen) {
-      // Clear all error states when modal opens
+      // Clear form data and error states when modal opens
+      setFormData({
+        email: '',
+        password: ''
+      })
       setErrors({
         email: '',
         password: ''
@@ -548,6 +547,8 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
       setEmailVerificationStatus(null)
       setShowVerificationMessage(false)
       setIsGoogleLoading(false)
+      setShowPassword(false)
+      setRememberMe(false)
       
       // Clear any existing timeout
       if (googleTimeoutRef.current) {
@@ -617,10 +618,10 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
           />
           <button
               onClick={handleClose}
-              className="cursor-pointer ml-4 absolute top-[30px] right-[30px]"
+              className="cursor-pointer ml-4 absolute md:top-[30px] md:right-[30px] top-[20px] right-[20px]"
               aria-label="Close signin modal"
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg width="24" height="24" className="md:w-6 md:h-6 w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M22.5 1.5L1.5 22.5M1.5 1.5L22.5 22.5" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
           </button>
@@ -645,7 +646,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
                 Welcome Back to <span className="text-[#5046E5]">EdgeAi</span>
               </h3>
               <p id="signin-modal-description" className="text-[#667085] text-[16px] text-center mt-2">
-                Please enter your credentials to access your <br /> account and create videos seamlessly.
+                Please enter your credentials to access your <br className='hidden md:block' /> account and create videos seamlessly.
               </p>
             </div>
           </div>
@@ -734,6 +735,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
                       value={formData.password}
                       onChange={(e) => handleInputChange('password', e.target.value)}
                       onBlur={handleInputBlur}
+                      autoComplete="off"
                       placeholder="**********"
                       aria-describedby={errors.password ? 'password-error' : undefined}
                       aria-invalid={!!errors.password}

@@ -116,6 +116,15 @@ class AuthService {
         const accessToken = this.jwtService.generateToken(user._id?.toString() || '', user.email);
         await user.save();
         
+        // Send welcome email for existing users who just linked their Google account
+        try {
+          await this.emailService.sendWelcomeEmail(user.email, user.firstName);
+          console.log(`Welcome email sent successfully to linked Google user: ${user.email}`);
+        } catch (emailError) {
+          console.error(`Failed to send welcome email to linked Google user ${user.email}:`, emailError);
+          // Don't fail the entire login if email fails
+        }
+        
         return { user, accessToken, isNewUser: false };
       }
 
@@ -132,6 +141,15 @@ class AuthService {
 
       const accessToken = this.jwtService.generateToken((user._id as any)?.toString() || '', user.email);
       await user.save();
+
+      // Send welcome email for new Google users since their email is pre-verified
+      try {
+        await this.emailService.sendWelcomeEmail(user.email, user.firstName);
+        console.log(`Welcome email sent successfully to new Google user: ${user.email}`);
+      } catch (emailError) {
+        console.error(`Failed to send welcome email to new Google user ${user.email}:`, emailError);
+        // Don't fail the entire registration if email fails
+      }
 
       return { user, accessToken, isNewUser: true };
     } catch (error) {

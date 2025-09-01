@@ -71,17 +71,7 @@ export default function AccountPage() {
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
 
-  // Phone number formatter - same as signup modal and profile info section
-  const formatPhoneNumber = (value: string): string => {
-    const phoneNumber = value.replace(/\D/g, '')
-    const phoneNumberLength = phoneNumber.length
-
-    if (phoneNumberLength < 4) return phoneNumber
-    if (phoneNumberLength < 7) {
-      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`
-    }
-    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`
-  }
+  // Phone number is now optional and accepts any format
 
   // Synchronize profile data with Redux store
   useEffect(() => {
@@ -91,7 +81,7 @@ export default function AccountPage() {
         firstName: currentUser.firstName || '',
         lastName: currentUser.lastName || '',
         email: currentUser.email || '',
-        phone: formatPhoneNumber(currentUser.phone || '')
+        phone: currentUser.phone || ''
       }))
     }
   }, [currentUser])
@@ -113,16 +103,9 @@ export default function AccountPage() {
       return
     }
     
-    let processedValue = value
-    
-    // Apply phone number formatting if it's the phone field
-    if (field === 'phone') {
-      processedValue = formatPhoneNumber(value)
-    }
-    
     setProfileData(prev => ({
       ...prev,
-      [field]: processedValue
+      [field]: value
     }))
     
     // Clear error when user starts typing
@@ -177,11 +160,7 @@ export default function AccountPage() {
       newErrors.lastName = 'Last name is required'
     }
 
-    // Validate phone (optional but if provided, should be valid)
-    // Use the same format as signup modal: (XXX) XXX-XXXX
-    if (profileData.phone.trim() && !/^\(\d{3}\) \d{3}-\d{4}$/.test(profileData.phone)) {
-      newErrors.phone = 'Please enter a valid phone number in format (XXX) XXX-XXXX'
-    }
+    // Phone is optional and accepts any format
 
     setErrors(newErrors)
     
@@ -208,7 +187,7 @@ export default function AccountPage() {
         body: JSON.stringify({
           firstName: profileData.firstName,
           lastName: profileData.lastName,
-          phone: profileData.phone.replace(/\D/g, '') // Store clean phone number
+          phone: profileData.phone // Store phone number as entered
         }),
       })
 
@@ -226,7 +205,7 @@ export default function AccountPage() {
           ...prev,
           firstName: data.data.user.firstName,
           lastName: data.data.user.lastName,
-          phone: formatPhoneNumber(data.data.user.phone)
+          phone: data.data.user.phone
         }))
       } else {
         // Handle errors
