@@ -260,6 +260,7 @@ function ResetPasswordContent() {
                 id="password"
                 name="password"
                 value={formData.password}
+                autoComplete='off'
                 onChange={(e) => handleInputChange('password', e.target.value)}
                 className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white pr-12 ${
                   errors.password ? 'ring-2 ring-red-500' : ''
@@ -298,6 +299,7 @@ function ResetPasswordContent() {
                 id="confirmPassword"
                 name="confirmPassword"
                 value={formData.confirmPassword}
+                autoComplete='off'
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                 className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white pr-12 ${
                   errors.confirmPassword ? 'ring-2 ring-red-500' : ''
@@ -326,23 +328,26 @@ function ResetPasswordContent() {
           </div>
 
           {/* Password Requirements */}
-          <div className="bg-[#F9FAFB] p-4 rounded-[8px] border border-[#E5E7EB]">
-            <h4 className="text-sm font-medium text-[#374151] mb-3">Password Requirements:</h4>
-            <ul className="text-sm text-[#6B7280] space-y-2">
-              {(() => {
-                const result = validatePassword(formData.password)
-                return result.feedback.map((requirement, index) => {
-                  const isMet = !result.errors.some(error => error.includes(requirement.toLowerCase()))
-                  return (
-                    <li key={index} className={`flex items-center gap-2 ${isMet ? 'text-green-600' : ''}`}>
-                      <span className={isMet ? 'text-green-600' : 'text-[#D1D5DB]'}>✓</span>
-                      {requirement}
-                    </li>
-                  )
-                })
-              })()}
-            </ul>
-          </div>
+          {(() => {
+            const result = validatePassword(formData.password)
+            if (result.isValid) return null
+            return (
+              <div className="bg-[#F9FAFB] p-4 rounded-[8px] border border-[#E5E7EB]">
+                <h4 className="text-sm font-medium text-[#374151] mb-3">Password Requirements:</h4>
+                <ul className="text-sm text-[#6B7280] space-y-2">
+                  {result.feedback.map((requirement, index) => {
+                    const isMet = !result.errors.some(error => error.includes(requirement.toLowerCase()))
+                    return (
+                      <li key={index} className={`flex items-center gap-2 ${isMet ? 'text-gray-600' : ''}`}>
+                        <span className={isMet ? 'text-gray-600' : 'text-gray-600'}>✓</span>
+                        {requirement}
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )
+          })()}
 
           {/* Submit Button */}
           <button
