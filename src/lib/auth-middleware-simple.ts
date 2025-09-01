@@ -34,7 +34,6 @@ const AUTH_ROUTES = {
   PROTECTED: [
     '/api/auth/me',
     '/api/auth/profile',
-    '/api/auth/logout',
     '/api/auth/clear-expired-tokens'
   ],
   
@@ -165,7 +164,8 @@ export async function authMiddleware(request: NextRequest): Promise<NextResponse
     request.method !== 'GET' &&
     requiresAuth(pathname) &&
     !AUTH_ROUTES.VIDEO.some(route => pathname.startsWith(route)) &&
-    !pathname.startsWith('/api/auth/profile')
+    !pathname.startsWith('/api/auth/profile') &&
+    !pathname.startsWith('/api/auth/logout')
   ) {
     const csrfToken = request.headers.get('x-csrf-token');
     if (!csrfToken || !ServerCSRFProtection.validateToken(csrfToken)) {

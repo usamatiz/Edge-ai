@@ -168,8 +168,13 @@ export async function middleware(req: NextRequest) {
   
   console.log(`🌐 Main Middleware: Processing ${req.method} ${pathname}`);
   
-  // 1. Handle auth routes with specialized middleware (excluding video routes)
-  if (pathname.startsWith('/api/auth/') && !pathname.startsWith('/api/auth/create-video')) {
+  // 1. Handle auth routes with specialized middleware (excluding video routes and profile updates)
+  //    Profile updates are handled directly by the API route to avoid Edge JWT verification issues
+  if (
+    pathname.startsWith('/api/auth/') &&
+    !pathname.startsWith('/api/auth/create-video') &&
+    !pathname.startsWith('/api/auth/profile')
+  ) {
     console.log(`🔐 Main Middleware: Delegating to auth middleware for ${pathname}`);
     const authResponse = await authMiddleware(req);
     if (authResponse) {
