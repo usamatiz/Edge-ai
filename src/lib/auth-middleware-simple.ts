@@ -38,7 +38,7 @@ const AUTH_ROUTES = {
     '/api/auth/clear-expired-tokens'
   ],
   
-  // Video routes (auth required)
+  // Video routes (public - no auth required)
   VIDEO: [
     '/api/auth/create-video',
     '/api/auth/create-video/generate-video',
@@ -50,8 +50,7 @@ const AUTH_ROUTES = {
  * Check if route requires authentication
  */
 function requiresAuth(pathname: string): boolean {
-  return AUTH_ROUTES.PROTECTED.some(route => pathname.startsWith(route)) ||
-         AUTH_ROUTES.VIDEO.some(route => pathname.startsWith(route));
+  return AUTH_ROUTES.PROTECTED.some(route => pathname.startsWith(route));
 }
 
 /**
@@ -160,8 +159,8 @@ export async function authMiddleware(request: NextRequest): Promise<NextResponse
     return rateLimitResponse;
   }
   
-  // 2. CSRF protection for non-GET requests on protected routes only
-  if (request.method !== 'GET' && requiresAuth(pathname)) {
+  // 2. CSRF protection for non-GET requests on protected routes only (excluding video routes)
+  if (request.method !== 'GET' && requiresAuth(pathname) && !AUTH_ROUTES.VIDEO.some(route => pathname.startsWith(route))) {
     const csrfToken = request.headers.get('x-csrf-token');
     if (!csrfToken || !ServerCSRFProtection.validateToken(csrfToken)) {
       console.log(`🔐 Auth Middleware: CSRF validation failed for ${pathname}`);

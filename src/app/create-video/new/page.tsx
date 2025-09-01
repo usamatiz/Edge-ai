@@ -1,7 +1,6 @@
 "use client";
 
 import CreateVideoForm from "@/components/ui/create-video-form";
-import Link from "next/link";
 import ProtectedRoute from "@/components/features/auth/ProtectedRoute";
 // import { ArrowLeft } from "lucide-react";
 // import Link from "next/link";
@@ -28,12 +27,14 @@ export default function NewVideoPage() {
 
           <div className="flex justify-center mb-10">
             {/* Create Video Button */}
-            <Link
-              href="/create-video"
+            <button
+              onClick={() => {
+                window.location.href = '/create-video';
+              }}
               className="inline-flex items-center md:max-w-[167px] max-w-full w-full justify-center gap-2 px-6 py-[9.4px] bg-transparent text-[#5046E5] rounded-full md:text-[20px] text-[18px] hover:bg-[#5046E5] hover:text-white border-2 border-[#5046E5] transition-all duration-300 font-semibold whitespace-nowrap"
             >
               Gallery
-            </Link>
+            </button>
           </div>
 
           {/* Form Content */}

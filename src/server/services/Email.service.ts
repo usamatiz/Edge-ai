@@ -25,6 +25,7 @@ class EmailService {
     
     if (emailUser && emailPass) {
       try {
+        console.log(`[Email Service] Configuring SMTP with host: ${emailHost}, port: ${emailPort}, user: ${emailUser}`);
         this.transporter = nodemailer.createTransport({
           host: emailHost,
           port: emailPort,
@@ -37,13 +38,15 @@ class EmailService {
             rejectUnauthorized: false
           }
         });
-        // console.log('✅ Email service configured successfully with SMTP');
+        console.log('✅ Email service configured successfully with SMTP');
       } catch (error) {
         console.error('Email service configuration failed:', error);
         this.transporter = null;
       }
     } else {
       console.log('Email service not configured - running in development mode');
+      console.log('Required environment variables: EMAIL_USER, EMAIL_PASS');
+      console.log('Current values: EMAIL_USER=' + (emailUser ? 'SET' : 'NOT SET'), 'EMAIL_PASS=' + (emailPass ? 'SET' : 'NOT SET'));
     }
   }
 
@@ -127,6 +130,10 @@ class EmailService {
    */
   private async sendEmail(options: EmailOptions): Promise<void> {
     try {
+      console.log(`[Email Service] Attempting to send email to: ${options.to}`);
+      console.log(`[Email Service] Transporter configured: ${!!this.transporter}`);
+      console.log(`[Email Service] Development mode: ${this.isDevelopment}`);
+      
       // If no transporter is configured, log the email in development
       if (!this.transporter) {
         if (this.isDevelopment) {
@@ -294,6 +301,7 @@ class EmailService {
    * Send welcome email
    */
   async sendWelcomeEmail(email: string, firstName: string): Promise<void> {
+    console.log(`Attempting to send welcome email to: ${email} for user: ${firstName}`);
     const dashboardUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/account`;
     
     const content = `

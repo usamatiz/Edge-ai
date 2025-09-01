@@ -141,6 +141,11 @@ function shouldExcludeFromRateLimit(req: NextRequest): boolean {
     return true;
   }
   
+  // Exclude video creation routes from rate limiting
+  if (pathname.startsWith('/api/auth/create-video')) {
+    return true;
+  }
+  
   // Exclude other video endpoints from rate limiting
   const excludedPaths = [
     '/api/video/download',
@@ -163,8 +168,8 @@ export async function middleware(req: NextRequest) {
   
   console.log(`🌐 Main Middleware: Processing ${req.method} ${pathname}`);
   
-  // 1. Handle auth routes with specialized middleware
-  if (pathname.startsWith('/api/auth/')) {
+  // 1. Handle auth routes with specialized middleware (excluding video routes)
+  if (pathname.startsWith('/api/auth/') && !pathname.startsWith('/api/auth/create-video')) {
     console.log(`🔐 Main Middleware: Delegating to auth middleware for ${pathname}`);
     const authResponse = await authMiddleware(req);
     if (authResponse) {

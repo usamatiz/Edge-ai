@@ -9,7 +9,8 @@ export async function POST(request: NextRequest) {
     // Validate required fields
     const requiredFields = [
       'hook', 'body', 'conclusion', 'company_name', 
-      'social_handles', 'license', 'avatar', 'email'
+      'social_handles', 'license', 'avatar', 'email', 
+      'title'
     ];
     
     for (const field of requiredFields) {
@@ -42,6 +43,7 @@ export async function POST(request: NextRequest) {
       license: body.license,
       avatar: body.avatar,
       email: body.email,
+      title: body.title,
       timestamp: new Date().toISOString()
     };
 
@@ -54,8 +56,6 @@ export async function POST(request: NextRequest) {
     console.log('Sending request to video generation webhook:', webhookUrl);
     console.log('Webhook data:', webhookData);
 
-    // Generate a unique request ID
-    const requestId = `video_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     // Fire and forget approach - send request to n8n and return immediately
     // This prevents platform timeout issues when n8n takes 10-15 minutes
@@ -69,7 +69,6 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         ...webhookData,
-        requestId: requestId
       })
     }).then(response => {
       console.log('Response web hook n8n', response);
@@ -81,14 +80,13 @@ export async function POST(request: NextRequest) {
 
 
     // Return immediately with request ID
-    console.log('Video generation request sent, returning request ID:', requestId);
+    console.log('Video generation request sent');
     
     const response = {
       success: true,
       message: 'Video generation started successfully',
-      data: {
+      data: { 
         status: 'processing',
-        request_id: requestId,
         timestamp: new Date().toISOString(),
         estimated_completion: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 minutes estimate
         note: 'Video generation is running in the background. The video will be available when ready.'

@@ -36,24 +36,14 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
 
-  // Phone number formatter - same as signup modal
-  const formatPhoneNumber = (value: string): string => {
-    const phoneNumber = value.replace(/\D/g, '')
-    const phoneNumberLength = phoneNumber.length
-
-    if (phoneNumberLength < 4) return phoneNumber
-    if (phoneNumberLength < 7) {
-      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`
-    }
-    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`
-  }
+  // Phone number is now optional and accepts any format
 
   const handleInputChange = (field: keyof ProfileFormData, value: string) => {
     let processedValue = value
     
     // Apply field-specific processing with enhanced security
     if (field === 'phone') {
-      processedValue = formatPhoneNumber(sanitizeInput(value, 'phone'))
+      processedValue = sanitizeInput(value, 'phone')
     } else if (field === 'email') {
       processedValue = sanitizeInput(value, 'email')
     } else if (field === 'firstName' || field === 'lastName') {
@@ -112,16 +102,7 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
     }
   }, [isEmailVerified])
 
-  // Format phone number when data changes
-  useEffect(() => {
-    if (data.phone && !data.phone.includes('(')) {
-      // If phone number doesn't have formatting, format it
-      const formattedPhone = formatPhoneNumber(data.phone)
-      if (formattedPhone !== data.phone) {
-        onChange('phone', formattedPhone)
-      }
-    }
-  }, [data.phone, onChange])
+  // Phone number accepts any format - no formatting needed
 
   const handleResendVerification = async () => {
     try {
