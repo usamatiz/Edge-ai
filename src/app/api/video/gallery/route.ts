@@ -33,10 +33,10 @@ export async function GET(request: NextRequest) {
     const videoService = new VideoService();
 
     // Get user's videos with download URLs
-    const videosWithUrls = await videoService.getUserVideosWithDownloadUrls((user._id as any).toString());
+    const videosWithUrls = await videoService.getUserVideosWithDownloadUrls(user.email);
 
     // Get video statistics
-    const stats = await videoService.getUserVideoStats((user._id as any).toString());
+    const stats = await videoService.getUserVideoStats(user.email);
 
     return NextResponse.json({
       success: true,

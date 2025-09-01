@@ -5,6 +5,7 @@ import { useAppSelector, useAppDispatch } from '@/store/hooks'
 import { clearUser, setLoading } from '@/store/slices/userSlice'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import Link from 'next/link'
 
 interface ProfileDropdownProps {
   isMobile?: boolean
@@ -201,12 +202,13 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
               
               // Render navigation items as Links
               return (
-                <button
+                <Link
+                  href={item.href}
                   key={item.label}
                   onClick={() => {
                     setIsOpen(false)
                     if (onClose) onClose()
-                    window.location.href = item.href
+                    // window.location.href = item.href
                   }}
                   className={cn(
                     "w-full flex items-center cursor-pointer gap-3 rounded-[8px] px-4 py-3 text-[16px] font-medium transition-colors duration-150 focus:outline-none focus:bg-gray-100",
@@ -215,7 +217,7 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
                   role="menuitem"
                 >
                   <span>{item.label}</span>
-                </button>
+                </Link>
               )
             })}
           </div>

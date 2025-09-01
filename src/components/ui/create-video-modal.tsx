@@ -149,7 +149,7 @@ export default function CreateVideoModal({ isOpen, onClose, startAtComplete = fa
         },
         body: JSON.stringify({
           videoUrl: videoUrl,
-          userId: user?.id || '', // Use userId instead of userEmail
+          email: user?.email || '', // Use email instead of userId
           title: videoTopic || 'Generated Video'
         }),
       });

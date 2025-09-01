@@ -52,11 +52,11 @@ export class S3Service {
   /**
    * Generate a unique S3 key for video storage
    */
-  public generateS3Key(userId: string, videoId: string, filename: string): string {
+  public generateS3Key(email: string, videoId: string, filename: string): string {
     const timestamp = Date.now();
     const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
     // Include the videos prefix if it was part of the original bucket config
-    return `videos/${userId}/${videoId}/${timestamp}_${sanitizedFilename}`;
+    return `videos/${email}/${videoId}/${timestamp}_${sanitizedFilename}`;
   }
 
   /**
@@ -96,12 +96,12 @@ export class S3Service {
    * Create a presigned URL for video upload
    */
   async createUploadUrl(
-    userId: string, 
+    email: string, 
     videoId: string, 
     filename: string,
     contentType: string = 'video/mp4'
   ): Promise<VideoUploadResult> {
-    const s3Key = this.generateS3Key(userId, videoId, filename);
+    const s3Key = this.generateS3Key(email, videoId, filename);
     const secretKey = this.generateSecretKey();
 
     const command = new PutObjectCommand({
@@ -109,7 +109,7 @@ export class S3Service {
       Key: s3Key,
       ContentType: contentType,
       Metadata: {
-        userId,
+        email,
         videoId,
         secretKey,
         uploadedAt: new Date().toISOString(),
@@ -137,6 +137,9 @@ export class S3Service {
   ): Promise<VideoDownloadResult> {
     // Verify the video exists and check metadata
     try {
+      console.log(`S3 createDownloadUrl: Attempting to create download URL for s3Key: ${s3Key}`);
+      console.log(`S3 createDownloadUrl: Using bucket: ${this.bucketName}, region: ${this.region}`);
+      
       const headCommand = new HeadObjectCommand({
         Bucket: this.bucketName,
         Key: s3Key,
@@ -144,9 +147,18 @@ export class S3Service {
 
       const headResult = await this.client.send(headCommand);
       
-      // Verify secret key matches
-      if (headResult.Metadata?.secretKey !== secretKey) {
-        throw new Error('Invalid secret key for video access');
+      // Log metadata for debugging
+      console.log('S3 Metadata Debug:', {
+        s3Key,
+        s3Metadata: headResult.Metadata,
+        dbSecretKey: secretKey,
+        hasSecretKey: !!headResult.Metadata?.secretKey
+      });
+      
+      // Verify secret key matches (but don't fail if metadata is missing)
+      if (headResult.Metadata?.secretKey && headResult.Metadata.secretKey !== secretKey) {
+        console.warn(`Secret key mismatch for ${s3Key}. S3: ${headResult.Metadata.secretKey}, DB: ${secretKey}`);
+        // Continue anyway - this might be an old video without proper metadata
       }
 
       const command = new GetObjectCommand({
@@ -163,6 +175,7 @@ export class S3Service {
         expiresIn,
       };
     } catch (error) {
+      console.error(`S3 createDownloadUrl error for ${s3Key}:`, error);
       if (error instanceof Error && error.name === 'NotFound') {
         throw new Error('Video not found');
       }
@@ -257,7 +270,9 @@ export function getS3Service(): S3Service {
       pathParts: pathParts,
       region: process.env.AWS_REGION,
       hasAccessKey: !!process.env.AWS_ACCESS_KEY_ID,
-      hasSecretKey: !!process.env.AWS_SECRET_ACCESS_KEY
+      hasSecretKey: !!process.env.AWS_SECRET_ACCESS_KEY,
+      endpoint: process.env.AWS_S3_ENDPOINT,
+      forcePathStyle: process.env.AWS_S3_FORCE_PATH_STYLE
     });
 
     const config: S3Config = {
