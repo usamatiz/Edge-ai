@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Barlow, Quicksand } from "next/font/google";
 import { Header } from "@/components/layout";
 import ClientProviders from "@/components/providers/ClientProviders";
-// import { AuthDebug } from "@/components/dev/AuthDebug";
+
 import "./globals.css";
 import { Footer, AuthLoader } from "@/components/ui";
 import GlobalNotification from "@/components/ui/global-notification";
@@ -64,7 +64,7 @@ export default function RootLayout({
             </main>
             <Footer />
             <GlobalNotification />
-            {/* <AuthDebug /> */}
+
           </AuthLoader>
         </ClientProviders>
       </body>

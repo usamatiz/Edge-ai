@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { clearUser } from '@/store/slices/userSlice';
 import { isTokenExpired, isTokenExpiringSoon, handleTokenExpiration } from '@/lib/jwt-client';
 import { useNotificationStore } from '@/components/ui/global-notification';
+import { getApiUrl, API_CONFIG } from '@/lib/config';
 
 export const useTokenValidation = () => {
   const dispatch = useDispatch();
@@ -34,16 +35,17 @@ export const useTokenValidation = () => {
 
   const validateTokenWithServer = useCallback(async () => {
     const token = localStorage.getItem('accessToken');
-    
+    const csrfToken = localStorage.getItem('csrfToken');
     if (!token) {
       return false;
     }
 
     try {
-      const response = await fetch('/api/auth/validate-token', {
+      const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.AUTH.VALIDATE_TOKEN), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken || '',
         },
         body: JSON.stringify({ token }),
       });

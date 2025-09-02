@@ -5,6 +5,7 @@ import { useAppSelector, useAppDispatch } from '@/store/hooks'
 import { clearUser, setLoading } from '@/store/slices/userSlice'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import Link from 'next/link'
 
 interface ProfileDropdownProps {
   isMobile?: boolean
@@ -27,12 +28,14 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
         !dropdownRef.current.contains(event.target as Node) &&
         buttonRef.current &&
         !buttonRef.current.contains(event.target as Node)
-      ) {
+      )
+      {
         setIsOpen(false)
       }
     }
 
-    if (isOpen) {
+    if (isOpen)
+    {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
@@ -41,30 +44,34 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
   // Handle escape key
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isOpen) {
+      if (event.key === 'Escape' && isOpen)
+      {
         setIsOpen(false)
         buttonRef.current?.focus()
       }
     }
 
-    if (isOpen) {
+    if (isOpen)
+    {
       document.addEventListener('keydown', handleEscape)
       return () => document.removeEventListener('keydown', handleEscape)
     }
   }, [isOpen])
 
   const handleLogout = async () => {
-    try {
+    try
+    {
       // Set loading state to show loader during logout
       dispatch(setLoading(true))
-      
+
       // Close dropdown first
       setIsOpen(false)
       if (onClose) onClose()
-      
+
       // Call logout API to invalidate token on server
       const accessToken = localStorage.getItem('accessToken')
-      if (accessToken) {
+      if (accessToken)
+      {
         await fetch('/api/auth/logout', {
           method: 'POST',
           headers: {
@@ -73,18 +80,20 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
           },
         })
       }
-      
+
       // Clear user data from Redux store
       dispatch(clearUser())
-      
+
       // Redirect to home page
       router.push('/')
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Logout error:', error)
       // Even if API call fails, clear local data
       dispatch(clearUser())
       router.push('/')
-    } finally {
+    } finally
+    {
       // Set loading to false after a short delay to ensure smooth transition
       setTimeout(() => {
         dispatch(setLoading(false))
@@ -132,17 +141,17 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
-        
+
         {/* Name (desktop) or full info (mobile) */}
         <div className={cn("flex items-center gap-x-3", isMobile ? "flex-1" : "")}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 12C10.9 12 9.95833 11.6083 9.175 10.825C8.39167 10.0417 8 9.1 8 8C8 6.9 8.39167 5.95833 9.175 5.175C9.95833 4.39167 10.9 4 12 4C13.1 4 14.0417 4.39167 14.825 5.175C15.6083 5.95833 16 6.9 16 8C16 9.1 15.6083 10.0417 14.825 10.825C14.0417 11.6083 13.1 12 12 12ZM4 20V17.2C4 16.6333 4.146 16.1127 4.438 15.638C4.73 15.1633 5.11733 14.8007 5.6 14.55C6.63333 14.0333 7.68333 13.646 8.75 13.388C9.81667 13.13 10.9 13.0007 12 13C13.1 12.9993 14.1833 13.1287 15.25 13.388C16.3167 13.6473 17.3667 14.0347 18.4 14.55C18.8833 14.8 19.271 15.1627 19.563 15.638C19.855 16.1133 20.0007 16.634 20 17.2V20H4Z" fill="#5F5F5F"/>
-            </svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 12C10.9 12 9.95833 11.6083 9.175 10.825C8.39167 10.0417 8 9.1 8 8C8 6.9 8.39167 5.95833 9.175 5.175C9.95833 4.39167 10.9 4 12 4C13.1 4 14.0417 4.39167 14.825 5.175C15.6083 5.95833 16 6.9 16 8C16 9.1 15.6083 10.0417 14.825 10.825C14.0417 11.6083 13.1 12 12 12ZM4 20V17.2C4 16.6333 4.146 16.1127 4.438 15.638C4.73 15.1633 5.11733 14.8007 5.6 14.55C6.63333 14.0333 7.68333 13.646 8.75 13.388C9.81667 13.13 10.9 13.0007 12 13C13.1 12.9993 14.1833 13.1287 15.25 13.388C16.3167 13.6473 17.3667 14.0347 18.4 14.55C18.8833 14.8 19.271 15.1627 19.563 15.638C19.855 16.1133 20.0007 16.634 20 17.2V20H4Z" fill="#5F5F5F" />
+          </svg>
           <span className={cn(
             "font-medium text-[#5F5F5F]",
             isMobile ? "text-[20px]" : "text-[20px] hidden lg:block"
           )}>
-            {isMobile 
+            {isMobile
               ? `${currentUser.firstName} ${currentUser.lastName}`
               : currentUser.firstName
             }
@@ -151,7 +160,7 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
             "transition-transform duration-200",
             isOpen ? "rotate-180" : ""
           )} viewBox="0 0 18 9" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0 0L9 9L18 0H0Z" fill="#5F5F5F"/>
+            <path d="M0 0L9 9L18 0H0Z" fill="#5F5F5F" />
           </svg>
 
         </div>
@@ -163,8 +172,8 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
           ref={dropdownRef}
           className={cn(
             "absolute z-[9999] bg-white rounded-[12px] shadow-xl border border-gray-200 p-2 min-w-[200px]",
-            isMobile 
-              ? "top-full left-0 right-0 mt-2" 
+            isMobile
+              ? "top-full left-0 right-0 mt-2"
               : "top-full right-0 mt-2"
           )}
           role="menu"
@@ -177,7 +186,8 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
           {/* Menu Items */}
           <div className="">
             {menuItems.map((item) => {
-              if (item.isLogout) {
+              if (item.isLogout)
+              {
                 // Render logout as a button styled as a link with border above
                 return (
                   <div key={item.label}>
@@ -198,15 +208,16 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
                   </div>
                 )
               }
-              
+
               // Render navigation items as Links
               return (
-                <button
+                <Link
                   key={item.label}
+                  href={item.href}
                   onClick={() => {
                     setIsOpen(false)
                     if (onClose) onClose()
-                    window.location.href = item.href
+                    // window.location.href = item.href
                   }}
                   className={cn(
                     "w-full flex items-center cursor-pointer gap-3 rounded-[8px] px-4 py-3 text-[16px] font-medium transition-colors duration-150 focus:outline-none focus:bg-gray-100",
@@ -215,7 +226,7 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
                   role="menuitem"
                 >
                   <span>{item.label}</span>
-                </button>
+                </Link>
               )
             })}
           </div>

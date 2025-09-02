@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { Eye, EyeOff, AlertCircle, Mail, CheckCircle } from 'lucide-react'
-import { CSRFProtection, sanitizeInput } from '@/lib/utils'
+
 import { useAppDispatch } from '@/store/hooks'
 import { updateUser } from '@/store/slices/userSlice'
+import { apiService } from '@/lib/api-service'
 
 interface ProfileFormData {
   firstName: string
@@ -40,17 +41,9 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
 
   const handleInputChange = (field: keyof ProfileFormData, value: string) => {
     let processedValue = value
-    
-    // Apply field-specific processing with enhanced security
-    if (field === 'phone') {
-      processedValue = sanitizeInput(value, 'phone')
-    } else if (field === 'email') {
-      processedValue = sanitizeInput(value, 'email')
-    } else if (field === 'firstName' || field === 'lastName') {
-      processedValue = sanitizeInput(value, 'name')
-    } else {
-      processedValue = sanitizeInput(value, 'text')
-    }
+
+    // Simple input sanitization
+    processedValue = value.trim();
 
     onChange(field, processedValue)
   }
@@ -59,7 +52,7 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
     setToastMessage(message)
     setToastType(type)
     setShowToast(true)
-    
+
     // Auto hide toast after 5 seconds
     setTimeout(() => {
       setShowToast(false)
@@ -67,25 +60,16 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
   }
 
   const refreshUserData = async () => {
-    try {
-      const accessToken = localStorage.getItem('accessToken')
-      if (!accessToken) return
-
-      const response = await fetch('/api/auth/me', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success) {
-          // Update user data in Redux store
-          dispatch(updateUser(data.data.user))
-        }
+    try
+    {
+      const response = await apiService.getCurrentUser()
+      if (response.success && response.data)
+      {
+        // Update user data in Redux store
+        dispatch(updateUser(response.data))
       }
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Failed to refresh user data:', error)
     }
   }
@@ -93,7 +77,8 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
   // Periodically refresh user data to check for email verification status updates
   useEffect(() => {
     // Only refresh if email is not verified
-    if (!isEmailVerified) {
+    if (!isEmailVerified)
+    {
       const interval = setInterval(() => {
         refreshUserData()
       }, 10000) // Check every 10 seconds
@@ -105,29 +90,24 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
   // Phone number accepts any format - no formatting needed
 
   const handleResendVerification = async () => {
-    try {
-      const response = await fetch('/api/auth/resend-verification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-csrf-token': CSRFProtection.getToken() || '',
-        },
-        body: JSON.stringify({ email: data.email }),
-      })
+    try
+    {
+      const response = await apiService.resendVerification(data.email)
 
-      const result = await response.json()
-      
-      if (result.success) {
+      if (response.success)
+      {
         showToastMessage('Verification email sent successfully! Please check your inbox.', 'success')
-        
+
         // Refresh user data to get the latest verification status
         setTimeout(() => {
           refreshUserData()
         }, 1000) // Wait a bit for the server to process
-      } else {
-        showToastMessage(result.message || 'Failed to send verification email. Please try again.', 'error')
+      } else
+      {
+        showToastMessage(response.message || 'Failed to send verification email. Please try again.', 'error')
       }
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Error sending verification email:', error)
       showToastMessage('Something went wrong. Please try again.', 'error')
     }
@@ -138,7 +118,7 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
       <h1 className="text-[32px] font-semibold text-[#282828] text-center mb-8">
         Profile Info
       </h1>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* First Name */}
         <div className="w-full">
@@ -153,9 +133,8 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
             placeholder="Enter First Name"
             aria-describedby={errors.firstName ? 'firstName-error' : undefined}
             aria-invalid={!!errors.firstName}
-            className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
-              errors.firstName ? 'ring-2 ring-red-500' : ''
-            }`}
+            className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${errors.firstName ? 'ring-2 ring-red-500' : ''
+              }`}
           />
           {errors.firstName && (
             <p id="firstName-error" className="text-red-500 text-sm mt-1 flex items-center gap-1">
@@ -178,9 +157,8 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
             placeholder="Enter Last Name"
             aria-describedby={errors.lastName ? 'lastName-error' : undefined}
             aria-invalid={!!errors.lastName}
-            className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
-              errors.lastName ? 'ring-2 ring-red-500' : ''
-            }`}
+            className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${errors.lastName ? 'ring-2 ring-red-500' : ''
+              }`}
           />
           {errors.lastName && (
             <p id="lastName-error" className="text-red-500 text-sm mt-1 flex items-center gap-1">
@@ -247,9 +225,8 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
             placeholder="Enter Phone"
             aria-describedby={errors.phone ? 'phone-error' : undefined}
             aria-invalid={!!errors.phone}
-            className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
-              errors.phone ? 'ring-2 ring-red-500' : ''
-            }`}
+            className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${errors.phone ? 'ring-2 ring-red-500' : ''
+              }`}
           />
           {errors.phone && (
             <p id="phone-error" className="text-red-500 text-sm mt-1 flex items-center gap-1">
@@ -301,11 +278,10 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
       {/* Toast Notification */}
       {showToast && (
         <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-right-2">
-          <div className={`px-4 py-3 rounded-lg shadow-lg max-w-sm ${
-            toastType === 'success' 
-              ? 'bg-green-500 text-white' 
-              : 'bg-red-500 text-white'
-          }`}>
+          <div className={`px-4 py-3 rounded-lg shadow-lg max-w-sm ${toastType === 'success'
+            ? 'bg-green-500 text-white'
+            : 'bg-red-500 text-white'
+            }`}>
             <div className="flex items-center gap-2">
               {toastType === 'success' ? (
                 <CheckCircle className="w-5 h-5" />

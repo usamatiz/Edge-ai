@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { AlertCircle, CheckCircle } from 'lucide-react'
-import { sanitizeInput, RateLimiter, CSRFProtection } from '@/lib/utils'
+import { apiService } from '@/lib/api-service'
+
 
 interface ForgotPasswordModalProps {
   isOpen: boolean
@@ -28,31 +29,28 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
-  
+
   // Toast state
   const [showToast, setShowToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
 
-  // Enhanced security features
-  const rateLimiter = useRef(new RateLimiter(3, 300000)) // 3 attempts per 5 minutes
+  // CSRF token management
   const [csrfToken, setCsrfToken] = useState<string>('')
-  
+
   useEffect(() => {
-    if (isOpen) {
-      // Generate CSRF token when modal opens
-      CSRFProtection.generateToken().then(token => {
-        setCsrfToken(token)
-      }).catch(error => {
-        console.error('Failed to generate CSRF token:', error)
-      })
+    if (isOpen)
+    {
+      // Generate simple CSRF token
+      const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      setCsrfToken(token);
       // Reset form when modal opens
       setFormData({ email: '' })
       setErrors({ email: '' })
       setShowSuccess(false)
     }
   }, [isOpen])
-  
+
   // Refs for focus management
   const modalRef = useRef<HTMLDivElement>(null)
   const firstInputRef = useRef<HTMLInputElement>(null)
@@ -63,7 +61,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
     setToastMessage(message)
     setToastType(type)
     setShowToast(true)
-    
+
     // Auto hide toast after 5 seconds
     setTimeout(() => {
       setShowToast(false)
@@ -71,18 +69,17 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
   }
 
   const handleInputChange = (field: keyof FormData, value: string) => {
-    // Enhanced input sanitization
-    const sanitizedValue = field === 'email' 
-      ? sanitizeInput(value, 'email')
-      : sanitizeInput(value, 'text')
-      
+    // Simple input sanitization
+    const sanitizedValue = value.trim();
+
     setFormData(prev => ({
       ...prev,
       [field]: sanitizedValue
     }))
-    
+
     // Clear error when user starts typing
-    if (errors[field]) {
+    if (errors[field])
+    {
       setErrors(prev => ({
         ...prev,
         [field]: ''
@@ -96,15 +93,17 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
     }
 
     // Validate email
-    if (!formData.email.trim()) {
+    if (!formData.email.trim())
+    {
       newErrors.email = 'Email is required'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
+    {
       newErrors.email = 'Please enter a valid email address'
     }
 
     // Set the errors
     setErrors(newErrors)
-    
+
     // Return true if no errors, false if there are errors
     return !Object.values(newErrors).some(error => error !== '')
   }
@@ -117,20 +116,23 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
     //   const errorMessage = remaining === 0 
     //     ? 'Too many password reset attempts. Please wait 5 minutes before trying again.'
     //     : `Please wait before trying again. ${remaining} attempts remaining.`
-      
+
     //   showToastMessage(errorMessage, 'error')
     //   return
     // }
 
     // CSRF token validation
-    if (!CSRFProtection.validateToken(csrfToken)) {
+    if (!csrfToken)
+    {
       showToastMessage('Security token invalid. Please refresh and try again.', 'error')
       return
     }
 
-    if (!validateForm()) {
+    if (!validateForm())
+    {
       // Announce errors to screen readers
-      if (errorAnnouncementRef.current) {
+      if (errorAnnouncementRef.current)
+      {
         errorAnnouncementRef.current.textContent = 'Form has validation errors. Please check all fields.'
       }
       showToastMessage('Please fix the validation errors before submitting.', 'error')
@@ -139,32 +141,25 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
 
     setIsSubmitting(true)
 
-    try {
-      // Call the forgot password API
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-csrf-token': csrfToken,
-        },
-        body: JSON.stringify({
-          email: formData.email,
-        }),
-      })
+    try
+    {
+      const response = await apiService.forgotPassword(formData.email)
 
-      const data = await response.json()
-
-      if (data.success) {
+      if (response.success)
+      {
         setShowSuccess(true)
         showToastMessage('Password reset email sent successfully! Please check your inbox.', 'success')
-      } else {
-        showToastMessage(data.message || 'Failed to send reset email. Please try again.', 'error')
+      } else
+      {
+        showToastMessage(response.message || 'Failed to send reset email. Please try again.', 'error')
       }
 
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Forgot password error:', error)
       showToastMessage('Something went wrong. Please try again.', 'error')
-    } finally {
+    } finally
+    {
       setIsSubmitting(false)
     }
   }
@@ -179,18 +174,20 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
 
   const handleBackToSignin = () => {
     handleClose()
-    if (onOpenSignin) {
+    if (onOpenSignin)
+    {
       onOpenSignin()
     }
   }
 
   // Focus management and accessibility
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen)
+    {
       // Prevent body scroll when modal is open
       const originalStyle = window.getComputedStyle(document.body).overflow
       document.body.style.overflow = 'hidden'
-      
+
       // Focus first input when modal opens
       setTimeout(() => {
         firstInputRef.current?.focus()
@@ -198,24 +195,30 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
 
       // Trap focus within modal
       const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
+        if (e.key === 'Escape')
+        {
           handleClose()
         }
-        
-        if (e.key === 'Tab' && modalRef.current) {
+
+        if (e.key === 'Tab' && modalRef.current)
+        {
           const focusableElements = modalRef.current.querySelectorAll(
             'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
           )
           const firstElement = focusableElements[0] as HTMLElement
           const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement
 
-          if (e.shiftKey) {
-            if (document.activeElement === firstElement) {
+          if (e.shiftKey)
+          {
+            if (document.activeElement === firstElement)
+            {
               e.preventDefault()
               lastElement.focus()
             }
-          } else {
-            if (document.activeElement === lastElement) {
+          } else
+          {
+            if (document.activeElement === lastElement)
+            {
               e.preventDefault()
               firstElement.focus()
             }
@@ -239,11 +242,10 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
       {/* Toast Notification */}
       {showToast && (
         <div className="fixed top-4 right-4 z-[60] animate-in slide-in-from-right-2">
-          <div className={`px-4 py-3 rounded-lg shadow-lg max-w-sm ${
-            toastType === 'success' 
-              ? 'bg-green-500 text-white' 
-              : 'bg-red-500 text-white'
-          }`}>
+          <div className={`px-4 py-3 rounded-lg shadow-lg max-w-sm ${toastType === 'success'
+            ? 'bg-green-500 text-white'
+            : 'bg-red-500 text-white'
+            }`}>
             <div className="flex items-center gap-2">
               {toastType === 'success' ? (
                 <CheckCircle className="w-5 h-5" />
@@ -257,7 +259,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
       )}
 
       <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-        <div 
+        <div
           ref={modalRef}
           className="bg-white rounded-[12px] md:px-[55px] px-4 pt-10 pb-10 max-w-[820px] w-full md:max-h-[615px] max-h-[700px] flex flex-col relative"
           role="dialog"
@@ -266,20 +268,20 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
           aria-describedby="forgot-password-modal-description"
         >
           {/* Screen reader announcements */}
-          <div 
+          <div
             ref={errorAnnouncementRef}
             className="sr-only"
             aria-live="polite"
             aria-atomic="true"
           />
-          
+
           <button
             onClick={handleClose}
             className="cursor-pointer ml-4 absolute top-[30px] right-[30px]"
             aria-label="Close forgot password modal"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M22.5 1.5L1.5 22.5M1.5 1.5L22.5 22.5" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M22.5 1.5L1.5 22.5M1.5 1.5L22.5 22.5" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
 
@@ -289,12 +291,12 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
               <div className="text-center">
                 <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
                 <h3 className="text-2xl font-semibold text-gray-800 mb-2">Email Sent Successfully!</h3>
-                  <p className="text-gray-600 mb-4">
+                <p className="text-gray-600 mb-4">
                   If an account with <strong>{formData.email}</strong> exists, we&apos;ve sent instructions to reset your password.
-                 </p>
-                 <p className="text-sm text-gray-500 mb-6">
-                 If you haven&apos;t received the email, please check your spam folder.
-                 </p>
+                </p>
+                <p className="text-sm text-gray-500 mb-6">
+                  If you haven&apos;t received the email, please check your spam folder.
+                </p>
                 <div className="space-y-3">
                   <button
                     onClick={() => {
@@ -322,9 +324,9 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
               <h3 id="forgot-password-modal-title" className="md:text-[48px] text-[25px] font-semibold text-[#282828] text-center">
                 Forgot Your <span className="text-[#5046E5]">Password?</span>
               </h3>
-                             <p id="forgot-password-modal-description" className="text-[#667085] text-[16px] text-center mt-2">
-                 No worries! Enter your email address and we&apos;ll send you <br /> a link to reset your password.
-               </p>
+              <p id="forgot-password-modal-description" className="text-[#667085] text-[16px] text-center mt-2">
+                No worries! Enter your email address and we&apos;ll send you <br /> a link to reset your password.
+              </p>
             </div>
           </div>
 
@@ -341,7 +343,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
             <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
               {/* CSRF Token (hidden) */}
               <input type="hidden" name="csrf_token" value={csrfToken} />
-              
+
               {/* Form Fields */}
               <div className="space-y-4">
                 {/* Email */}
@@ -358,9 +360,8 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
                     placeholder="Enter your email address"
                     aria-describedby={errors.email ? 'email-error' : undefined}
                     aria-invalid={!!errors.email}
-                    className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
-                      errors.email ? 'ring-2 ring-red-500' : ''
-                    }`}
+                    className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${errors.email ? 'ring-2 ring-red-500' : ''
+                      }`}
                   />
                   {errors.email && (
                     <p id="email-error" className="text-red-500 text-sm mt-1 flex items-center gap-1">
@@ -375,11 +376,10 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`w-full py-[11.4px] px-6 rounded-full font-semibold text-[20px] border-2 transition-colors duration-300 cursor-pointer mb-6 flex items-center justify-center gap-2 ${
-                  isSubmitting
-                    ? 'bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed'
-                    : 'bg-[#5046E5] text-white border-[#5046E5] hover:bg-transparent hover:text-[#5046E5]'
-                }`}
+                className={`w-full py-[11.4px] px-6 rounded-full font-semibold text-[20px] border-2 transition-colors duration-300 cursor-pointer mb-6 flex items-center justify-center gap-2 ${isSubmitting
+                  ? 'bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed'
+                  : 'bg-[#5046E5] text-white border-[#5046E5] hover:bg-transparent hover:text-[#5046E5]'
+                  }`}
                 aria-describedby={isSubmitting ? 'submitting-status' : undefined}
               >
                 {isSubmitting ? (
@@ -391,7 +391,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
                   'Send Reset Link'
                 )}
               </button>
-              
+
               {isSubmitting && (
                 <div id="submitting-status" className="sr-only" aria-live="polite">
                   Sending reset link, please wait...

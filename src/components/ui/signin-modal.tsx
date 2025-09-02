@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react'
-import { sanitizeInput, RateLimiter, CSRFProtection } from '@/lib/utils'
+
 import { isPasswordValidForLogin } from '@/lib/password-validation'
 import { useAppDispatch } from '@/store/hooks'
 import { setUser } from '@/store/slices/userSlice'
 import { validateAndHandleToken } from '@/lib/jwt-client'
+import { apiService } from '@/lib/api-service'
 
 // Google OAuth TypeScript declarations
 declare global {
@@ -56,7 +57,7 @@ const GOOGLE_REDIRECT_URI = typeof window !== 'undefined' ? `${window.location.o
 
 export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgotPassword }: SigninModalProps) {
   const dispatch = useAppDispatch()
-  
+
   const [formData, setFormData] = useState<FormData>({
     email: '',
     password: ''
@@ -70,32 +71,29 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
   const [showSuccess, setShowSuccess] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
-  
+
   // Toast state
   const [showToast, setShowToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
   const [emailVerificationStatus, setEmailVerificationStatus] = useState<EmailVerificationStatus | null>(null)
   const [showVerificationMessage, setShowVerificationMessage] = useState(false)
-  
+
   // Ref to track Google OAuth timeout
   const googleTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Enhanced security features
-  const rateLimiter = useRef(new RateLimiter(5, 60000)) // 5 attempts per minute
   const [csrfToken, setCsrfToken] = useState<string>('')
-  
+
   useEffect(() => {
-    if (isOpen) {
-      // Generate CSRF token when modal opens
-      CSRFProtection.generateToken().then(token => {
-        setCsrfToken(token)
-      }).catch(error => {
-        console.error('Failed to generate CSRF token:', error)
-      })
+    if (isOpen)
+    {
+      // Generate simple CSRF token
+      const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      setCsrfToken(token);
     }
   }, [isOpen])
-  
+
   // Refs for focus management
   const modalRef = useRef<HTMLDivElement>(null)
   const firstInputRef = useRef<HTMLInputElement>(null)
@@ -106,7 +104,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
     setToastMessage(message)
     setToastType(type)
     setShowToast(true)
-    
+
     // Auto hide toast after 3 seconds
     setTimeout(() => {
       setShowToast(false)
@@ -114,18 +112,17 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
   }
 
   const handleInputChange = (field: keyof FormData, value: string) => {
-    // Enhanced input sanitization
-    const sanitizedValue = field === 'email' 
-      ? sanitizeInput(value, 'email')
-      : sanitizeInput(value, 'text')
-      
+    // Simple input sanitization
+    const sanitizedValue = value.trim();
+
     setFormData(prev => ({
       ...prev,
       [field]: sanitizedValue
     }))
-    
+
     // Clear error when user starts typing (keep this for better UX)
-    if (errors[field]) {
+    if (errors[field])
+    {
       setErrors(prev => ({
         ...prev,
         [field]: ''
@@ -147,18 +144,23 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
     // Validate each field and collect errors
     Object.entries(formData).forEach(([key, value]) => {
       const field = key as keyof FormData
-      switch (field) {
+      switch (field)
+      {
         case 'email':
-          if (!value.trim()) {
+          if (!value.trim())
+          {
             newErrors.email = 'Email is required'
-          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
+          {
             newErrors.email = 'Please enter a valid email address'
           }
           break
         case 'password':
-          if (!value.trim()) {
+          if (!value.trim())
+          {
             newErrors.password = 'Password is required'
-          } else if (!isPasswordValidForLogin(value)) {
+          } else if (!isPasswordValidForLogin(value))
+          {
             newErrors.password = 'Please enter a valid password'
           }
           break
@@ -167,33 +169,35 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
 
     // Set the errors
     setErrors(newErrors)
-    
+
     // Return true if no errors, false if there are errors
     return !Object.values(newErrors).some(error => error !== '')
   }
 
   const handleSignin = async () => {
-    // Enhanced rate limiting check using RateLimiter class
-    const clientId = `signin_${formData.email || 'anonymous'}`
-    if (rateLimiter.current.isRateLimited(clientId)) {
-      const remaining = rateLimiter.current.getRemainingAttempts(clientId)
-      const errorMessage = remaining === 0 
-        ? 'Too many signin attempts. Please wait 1 minute before trying again.'
-        : `Please wait before trying again. ${remaining} attempts remaining.`
-      
-      showToastMessage(errorMessage, 'error')
-      return
+    // Simple rate limiting check
+    const now = Date.now();
+    const lastAttempt = localStorage.getItem('lastSigninAttempt') || '0';
+    const attemptCount = parseInt(localStorage.getItem('signinAttemptCount') || '0');
+
+    if (now - parseInt(lastAttempt) < 60000 && attemptCount >= 5)
+    {
+      showToastMessage('Too many signin attempts. Please wait 1 minute before trying again.', 'error');
+      return;
     }
 
     // CSRF token validation
-    if (!CSRFProtection.validateToken(csrfToken)) {
-      showToastMessage('Security token invalid. Please refresh and try again.', 'error')
-      return
+    if (!csrfToken)
+    {
+      showToastMessage('Security token invalid. Please refresh and try again.', 'error');
+      return;
     }
 
-    if (!validateForm()) {
+    if (!validateForm())
+    {
       // Announce errors to screen readers
-      if (errorAnnouncementRef.current) {
+      if (errorAnnouncementRef.current)
+      {
         errorAnnouncementRef.current.textContent = 'Form has validation errors. Please check all fields.'
       }
       showToastMessage('Please fix the validation errors before submitting.', 'error')
@@ -202,27 +206,20 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
 
     setIsSubmitting(true)
 
-    try {
-      // First, check if user exists and email verification status
-      const checkResponse = await fetch(`/api/auth/check-email?email=${encodeURIComponent(formData.email)}`)
-      const checkData = await checkResponse.json()
+    try
+    {
+      // First, check if user exists and email verification status 
+      const checkResponse = await apiService.checkEmail(formData.email)
+      const checkData = checkResponse
 
-      if (checkData.success && checkData.data.exists) {
+      if (checkData.success && checkData.data && checkData.data.exists)
+      {
         // User exists, now check email verification status
-        const verificationResponse = await fetch('/api/auth/check-email-verification', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-csrf-token': csrfToken,
-          },
-          body: JSON.stringify({
-            email: formData.email,
-          }),
-        })
+        const verificationResponse = await apiService.checkEmailVerification(formData.email)
+        const verificationData = verificationResponse
 
-        const verificationData = await verificationResponse.json()
-
-        if (verificationData.success && !verificationData.data.isVerified) {
+        if (verificationData.success && verificationData.data && !verificationData.data.isVerified)
+        {
           // Email not verified, show verification message
           setEmailVerificationStatus({
             isVerified: false,
@@ -234,48 +231,59 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
         }
       }
 
-      // Call the login API
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-csrf-token': csrfToken,
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
+      // Call the login API using new Express backend
+      const response = await apiService.login({
+        email: formData.email,
+        password: formData.password,
       })
 
-      const data = await response.json()
+      const data = response
 
-      if (data.success) {
+      if (data.success && data.data)
+      {
         // Validate JWT token before storing
         const accessToken = data.data.accessToken;
-        if (!validateAndHandleToken(accessToken)) {
+        if (!validateAndHandleToken(accessToken))
+        {
           showToastMessage('Invalid token received. Please try again.', 'error');
           return;
         }
-        
+
         // Store the access token
         localStorage.setItem('accessToken', accessToken)
-        
+
         // Dispatch Redux action to set user data
         dispatch(setUser({
-          user: data.data.user,
+          user: {
+            id: data.data.user.id,
+            email: data.data.user.email,
+            firstName: data.data.user.firstName,
+            lastName: data.data.user.lastName,
+            phone: data.data.user.phone || '',
+            isEmailVerified: data.data.user.isEmailVerified,
+            googleId: data.data.user.googleId,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
           accessToken: accessToken
         }))
-        
-                 // Show success message
-         const welcomeMessage = data.data.user 
-           ? `Login successful! Welcome back, ${data.data.user.firstName} ${data.data.user.lastName}!`
-           : 'Login successful! Welcome back to EdgeAi.'
-         showToastMessage(welcomeMessage, 'success')
-        
+
+        // Update rate limiting
+        localStorage.setItem('lastSigninAttempt', now.toString());
+        localStorage.setItem('signinAttemptCount', '0');
+
+        // Show success message
+        const welcomeMessage = data.data.user
+          ? `Login successful! Welcome back, ${data.data.user.firstName} ${data.data.user.lastName}!`
+          : 'Login successful! Welcome back to EdgeAi.'
+        showToastMessage(welcomeMessage, 'success')
+
         // Save email if "remember me" is checked
-        if (rememberMe) {
+        if (rememberMe)
+        {
           localStorage.setItem('signinEmail', formData.email)
-        } else {
+        } else
+        {
           localStorage.removeItem('signinEmail')
         }
 
@@ -283,49 +291,62 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
         setTimeout(() => {
           handleSuccessfulClose()
         }, 3000)
-      } else {
+      } else
+      {
         // Check if the error is due to email verification
-        if (data.data && data.data.requiresVerification) {
+        if (data.data && (data.data as any).requiresVerification)
+        {
           setEmailVerificationStatus({
             isVerified: false,
             email: formData.email
           })
           setShowVerificationMessage(true)
-        } else {
+        } else
+        {
+          // Increment rate limiting counter
+          const newCount = attemptCount + 1;
+          localStorage.setItem('signinAttemptCount', newCount.toString());
           showToastMessage(data.message || 'Login failed. Please try again.', 'error')
         }
       }
 
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Login error:', error)
       showToastMessage('Something went wrong. Please try again.', 'error')
-    } finally {
+    } finally
+    {
       setIsSubmitting(false)
     }
   }
 
   const handleGoogleSignin = async () => {
     setIsGoogleLoading(true)
-    
-    try {
+
+    try
+    {
       // Initialize Google OAuth
-      if (typeof window !== 'undefined' && window.google) {
+      if (typeof window !== 'undefined' && window.google)
+      {
         // Use Google Identity Services
         const client = window.google.accounts.oauth2.initTokenClient({
           client_id: GOOGLE_CLIENT_ID,
           scope: 'openid email profile',
           callback: async (response: { access_token?: string; error?: string }) => {
-            if (response.access_token) {
+            if (response.access_token)
+            {
               await handleGoogleToken(response.access_token)
-            } else {
+            } else
+            {
               showToastMessage('Google authentication failed. Please try again.', 'error')
             }
             setIsGoogleLoading(false)
           },
         })
-        
+
         client.requestAccessToken()
-      } else {
+      } else
+      {
         // Fallback to traditional OAuth flow
         const authUrl = `https://accounts.google.com/o/oauth2/auth?` +
           `client_id=${GOOGLE_CLIENT_ID}&` +
@@ -333,10 +354,11 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
           `scope=${encodeURIComponent('openid email profile')}&` +
           `response_type=code&` +
           `access_type=offline`
-        
+
         window.location.href = authUrl
       }
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Google signin error:', error)
       showToastMessage('Google authentication failed. Please try again.', 'error')
       setIsGoogleLoading(false)
@@ -344,7 +366,8 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
   }
 
   const handleGoogleToken = async (accessToken: string) => {
-    try {
+    try
+    {
       // Get user info from Google
       const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
         headers: {
@@ -352,62 +375,70 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
         },
       })
 
-      if (!userInfoResponse.ok) {
+      if (!userInfoResponse.ok)
+      {
         throw new Error('Failed to get user info from Google')
       }
 
       const userInfo = await userInfoResponse.json()
 
-      // Call your backend API with Google user data
-      const response = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-csrf-token': csrfToken,
-        },
-        body: JSON.stringify({
-          googleId: userInfo.id,
-          email: userInfo.email,
-          firstName: userInfo.given_name,
-          lastName: userInfo.family_name,
-        }),
+      // Call your backend API with Google user data using new Express backend
+      const response = await apiService.googleLogin({
+        googleId: userInfo.id,
+        email: userInfo.email,
+        firstName: userInfo.given_name || userInfo.firstName || '',
+        lastName: userInfo.family_name || userInfo.lastName || ''
       })
+      const data = response
 
-      const data = await response.json()
-
-      if (data.success) {
+      if (data.success && data.data)
+      {
         // Store the access token
         localStorage.setItem('accessToken', data.data.accessToken)
-        
+
         // Dispatch Redux action to set user data
         dispatch(setUser({
-          user: data.data.user,
+          user: {
+            id: data.data.user.id,
+            email: data.data.user.email,
+            firstName: data.data.user.firstName,
+            lastName: data.data.user.lastName,
+            phone: data.data.user.phone || '',
+            isEmailVerified: data.data.user.isEmailVerified,
+            googleId: data.data.user.googleId,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
           accessToken: data.data.accessToken
         }))
-        
-                 // Show success message
-         const welcomeMessage = data.data.user 
-           ? `Welcome to EdgeAi, ${data.data.user.firstName} ${data.data.user.lastName}!`
-           : 'Welcome to EdgeAi!'
-         showToastMessage(welcomeMessage, 'success')
-        
+
+        // Show success message
+        const welcomeMessage = data.data.user
+          ? `Welcome to EdgeAi, ${data.data.user.firstName} ${data.data.user.lastName}!`
+          : 'Welcome to EdgeAi!'
+        showToastMessage(welcomeMessage, 'success')
+
         // Close modal after success message (give user time to see the toast)
         setTimeout(() => {
           handleSuccessfulClose()
         }, 3000)
-      } else {
+      } else
+      {
         // Check if the error is due to email verification
-        if (data.data && data.data.requiresVerification) {
+        if (data.data && (data.data as any).requiresVerification)
+        {
           setEmailVerificationStatus({
             isVerified: false,
-            email: data.data.email
+            email: (data.data as any).email || userInfo.email
           })
           setShowVerificationMessage(true)
-        } else {
+        } else
+        {
           showToastMessage(data.message || 'Google login failed. Please try again.', 'error')
         }
       }
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Google token handling error:', error)
       showToastMessage('Failed to complete Google authentication. Please try again.', 'error')
     }
@@ -421,28 +452,22 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
   const handleResendVerification = async () => {
     if (!emailVerificationStatus) return
 
-    try {
-      const response = await fetch('/api/auth/resend-verification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-csrf-token': csrfToken,
-        },
-        body: JSON.stringify({
-          email: emailVerificationStatus.email,
-        }),
-      })
+    try
+    {
+      const response = await apiService.resendVerification(emailVerificationStatus.email)
+      const data = response
 
-      const data = await response.json()
-
-      if (data.success) {
+      if (data.success)
+      {
         showToastMessage('Verification email sent successfully! Please check your inbox.', 'success')
         setShowVerificationMessage(false)
         setEmailVerificationStatus(null)
-      } else {
+      } else
+      {
         showToastMessage(data.message || 'Failed to send verification email. Please try again.', 'error')
       }
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Error sending verification email:', error)
       showToastMessage('Something went wrong. Please try again.', 'error')
     }
@@ -455,11 +480,12 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
 
   const handleClose = useCallback(() => {
     // Clear Google OAuth timeout if exists
-    if (googleTimeoutRef.current) {
+    if (googleTimeoutRef.current)
+    {
       clearTimeout(googleTimeoutRef.current)
       googleTimeoutRef.current = null
     }
-    
+
     setFormData({
       email: '',
       password: ''
@@ -483,11 +509,12 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
 
   const handleSuccessfulClose = useCallback(() => {
     // Clear Google OAuth timeout if exists
-    if (googleTimeoutRef.current) {
+    if (googleTimeoutRef.current)
+    {
       clearTimeout(googleTimeoutRef.current)
       googleTimeoutRef.current = null
     }
-    
+
     setFormData({
       email: '',
       password: ''
@@ -509,11 +536,12 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
 
   // Focus management and accessibility
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen)
+    {
       // Prevent body scroll when modal is open
       const originalStyle = window.getComputedStyle(document.body).overflow
       document.body.style.overflow = 'hidden'
-      
+
       // Focus first input when modal opens
       setTimeout(() => {
         firstInputRef.current?.focus()
@@ -521,24 +549,30 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
 
       // Trap focus within modal
       const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
+        if (e.key === 'Escape')
+        {
           handleClose()
         }
-        
-        if (e.key === 'Tab' && modalRef.current) {
+
+        if (e.key === 'Tab' && modalRef.current)
+        {
           const focusableElements = modalRef.current.querySelectorAll(
             'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
           )
           const firstElement = focusableElements[0] as HTMLElement
           const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement
 
-          if (e.shiftKey) {
-            if (document.activeElement === firstElement) {
+          if (e.shiftKey)
+          {
+            if (document.activeElement === firstElement)
+            {
               e.preventDefault()
               lastElement.focus()
             }
-          } else {
-            if (document.activeElement === lastElement) {
+          } else
+          {
+            if (document.activeElement === lastElement)
+            {
               e.preventDefault()
               firstElement.focus()
             }
@@ -557,7 +591,8 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
 
   // Load saved email on mount and clear errors when modal opens
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen)
+    {
       // Clear form data and error states when modal opens
       setFormData({
         email: '',
@@ -575,16 +610,19 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
       setIsGoogleLoading(false)
       setShowPassword(false)
       setRememberMe(false)
-      
+
       // Clear any existing timeout
-      if (googleTimeoutRef.current) {
+      if (googleTimeoutRef.current)
+      {
         clearTimeout(googleTimeoutRef.current)
         googleTimeoutRef.current = null
       }
-    } else {
+    } else
+    {
       // Load saved email when modal is closed
       const savedEmail = localStorage.getItem('signinEmail')
-      if (savedEmail) {
+      if (savedEmail)
+      {
         setFormData(prev => ({ ...prev, email: savedEmail }))
         setRememberMe(true)
       }
@@ -593,7 +631,8 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
 
   // Load Google OAuth script
   useEffect(() => {
-    if (typeof window !== 'undefined' && !window.google) {
+    if (typeof window !== 'undefined' && !window.google)
+    {
       const script = document.createElement('script')
       script.src = 'https://accounts.google.com/gsi/client'
       script.async = true
@@ -609,11 +648,10 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
       {/* Toast Notification */}
       {showToast && (
         <div className="fixed top-4 right-4 z-[60] animate-in slide-in-from-right-2">
-          <div className={`px-4 py-3 rounded-lg shadow-lg max-w-sm ${
-            toastType === 'success' 
-              ? 'bg-green-500 text-white' 
-              : 'bg-red-500 text-white'
-          }`}>
+          <div className={`px-4 py-3 rounded-lg shadow-lg max-w-sm ${toastType === 'success'
+            ? 'bg-green-500 text-white'
+            : 'bg-red-500 text-white'
+            }`}>
             <div className="flex items-center gap-2">
               {toastType === 'success' ? (
                 <CheckCircle className="w-5 h-5" />
@@ -627,7 +665,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
       )}
 
       <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-        <div 
+        <div
           ref={modalRef}
           className="bg-white rounded-[12px] md:px-[55px] px-4 pt-10 pb-10 max-w-[820px] w-full md:max-h-[615px] max-h-[700px] flex flex-col relative"
           role="dialog"
@@ -636,22 +674,22 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
           aria-describedby="signin-modal-description"
         >
           {/* Screen reader announcements */}
-          <div 
+          <div
             ref={errorAnnouncementRef}
             className="sr-only"
             aria-live="polite"
             aria-atomic="true"
           />
           <button
-              onClick={handleClose}
-              className="cursor-pointer ml-4 absolute md:top-[30px] md:right-[30px] top-[20px] right-[20px]"
-              aria-label="Close signin modal"
-            >
-              <svg width="24" height="24" className="md:w-6 md:h-6 w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22.5 1.5L1.5 22.5M1.5 1.5L22.5 22.5" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+            onClick={handleClose}
+            className="cursor-pointer ml-4 absolute md:top-[30px] md:right-[30px] top-[20px] right-[20px]"
+            aria-label="Close signin modal"
+          >
+            <svg width="24" height="24" className="md:w-6 md:h-6 w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22.5 1.5L1.5 22.5M1.5 1.5L22.5 22.5" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </button>
-          
+
           {/* Success Message */}
           {showSuccess && (
             <div className="absolute inset-0 bg-white rounded-[12px] flex items-center justify-center z-10">
@@ -679,47 +717,47 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
 
           {/* Modal Content */}
           <div className="pt-7 overflow-y-auto flex-1 px-2">
-                      {/* General Error Message */}
-          {errors.general && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-              <p className="text-red-700 text-sm">{errors.general}</p>
-            </div>
-          )}
+            {/* General Error Message */}
+            {errors.general && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                <p className="text-red-700 text-sm">{errors.general}</p>
+              </div>
+            )}
 
-          {/* Email Verification Message */}
-          {showVerificationMessage && emailVerificationStatus && (
-            <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <h4 className="text-orange-800 font-medium mb-1">Email Verification Required</h4>
-                  <p className="text-orange-700 text-sm mb-3">
-                    Please verify your email address before logging in. Check your inbox for the verification link.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <button
-                      onClick={handleResendVerification}
-                      className="text-orange-600 hover:text-orange-800 text-sm font-medium underline"
-                    >
-                      Resend verification email
-                    </button>
-                    <button
-                      onClick={handleCloseVerificationMessage}
-                      className="text-orange-600 hover:text-orange-800 text-sm font-medium underline"
-                    >
-                      Close
-                    </button>
+            {/* Email Verification Message */}
+            {showVerificationMessage && emailVerificationStatus && (
+              <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h4 className="text-orange-800 font-medium mb-1">Email Verification Required</h4>
+                    <p className="text-orange-700 text-sm mb-3">
+                      Please verify your email address before logging in. Check your inbox for the verification link.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <button
+                        onClick={handleResendVerification}
+                        className="text-orange-600 hover:text-orange-800 text-sm font-medium underline"
+                      >
+                        Resend verification email
+                      </button>
+                      <button
+                        onClick={handleCloseVerificationMessage}
+                        className="text-orange-600 hover:text-orange-800 text-sm font-medium underline"
+                      >
+                        Close
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
             <form onSubmit={(e) => { e.preventDefault(); handleSignin(); }}>
               {/* CSRF Token (hidden) */}
               <input type="hidden" name="csrf_token" value={csrfToken} />
-              
+
               {/* Form Fields */}
               <div className="space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Email */}
@@ -737,9 +775,8 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
                     placeholder="Enter Email"
                     aria-describedby={errors.email ? 'email-error' : undefined}
                     aria-invalid={!!errors.email}
-                    className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
-                      errors.email ? 'ring-2 ring-red-500' : ''
-                    }`}
+                    className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${errors.email ? 'ring-2 ring-red-500' : ''
+                      }`}
                   />
                   {errors.email && (
                     <p id="email-error" className="text-red-500 text-sm mt-1 flex items-center gap-1">
@@ -765,9 +802,8 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
                       placeholder="**********"
                       aria-describedby={errors.password ? 'password-error' : undefined}
                       aria-invalid={!!errors.password}
-                      className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white pr-12 ${
-                        errors.password ? 'ring-2 ring-red-500' : ''
-                      }`}
+                      className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white pr-12 ${errors.password ? 'ring-2 ring-red-500' : ''
+                        }`}
                     />
                     <button
                       type="button"
@@ -790,53 +826,51 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
               {/* Remember Me and Forgot Password */}
               <div className="flex items-center justify-between mb-6 mt-3">
                 <label className="flex items-center gap-2 cursor-pointer">
-                    <div className="relative">
+                  <div className="relative">
                     <input
-                        type="checkbox"
-                        checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        className="sr-only"
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="sr-only"
                     />
-                    <div className={`w-[16px] h-[16px] border rounded-[6px] transition-all duration-200 ${
-                        rememberMe 
-                        ? 'bg-[#5046E5] border-[#5046E5]' 
-                        : 'bg-transparent border-[#D0D5DD]'
-                    }`}>
-                        {rememberMe && (
+                    <div className={`w-[16px] h-[16px] border rounded-[6px] transition-all duration-200 ${rememberMe
+                      ? 'bg-[#5046E5] border-[#5046E5]'
+                      : 'bg-transparent border-[#D0D5DD]'
+                      }`}>
+                      {rememberMe && (
                         <svg
-                            className="w-3 h-3 text-white absolute top-0.5 left-0.5"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
+                          className="w-3 h-3 text-white absolute top-0.5 left-0.5"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
                         >
-                            <path
+                          <path
                             fillRule="evenodd"
                             d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
                             clipRule="evenodd"
-                            />
+                          />
                         </svg>
-                        )}
+                      )}
                     </div>
-                    </div>
-                    <span className="text-[#5F5F5F] text-base">Remember me</span>
+                  </div>
+                  <span className="text-[#5F5F5F] text-base">Remember me</span>
                 </label>
                 <button
-                    type="button"
-                    onClick={handleForgotPassword}
-                    className="text-[#577FB9] text-sm font-semibold hover:underline cursor-pointer"
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-[#577FB9] text-sm font-semibold hover:underline cursor-pointer"
                 >
-                    Forgot password?
+                  Forgot password?
                 </button>
-                </div>
+              </div>
 
               {/* Sign In Button */}
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`w-full py-[11.4px] px-6 rounded-full font-semibold text-[20px] border-2 transition-colors duration-300 cursor-pointer mb-6 flex items-center justify-center gap-2 ${
-                  isSubmitting
-                    ? 'bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed'
-                    : 'bg-[#5046E5] text-white border-[#5046E5] hover:bg-transparent hover:text-[#5046E5]'
-                }`}
+                className={`w-full py-[11.4px] px-6 rounded-full font-semibold text-[20px] border-2 transition-colors duration-300 cursor-pointer mb-6 flex items-center justify-center gap-2 ${isSubmitting
+                  ? 'bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed'
+                  : 'bg-[#5046E5] text-white border-[#5046E5] hover:bg-transparent hover:text-[#5046E5]'
+                  }`}
                 aria-describedby={isSubmitting ? 'submitting-status' : undefined}
               >
                 {isSubmitting ? (
@@ -848,7 +882,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
                   'Log in'
                 )}
               </button>
-              
+
               {isSubmitting && (
                 <div id="submitting-status" className="sr-only" aria-live="polite">
                   Signing you in, please wait...
@@ -862,22 +896,22 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
                 disabled={isGoogleLoading}
                 className={`w-[220px] mx-auto bg-white text-[#344054] py-[9.2px] px-2 rounded-full font-normal text-[16px] border border-[#D0D5DD] transition-colors duration-300 cursor-pointer flex items-center justify-center gap-x-3`}
               >
-                  <>
-                    <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <g clipPath="url(#clip0_7697_226)">
-                      <path d="M24.2663 12.2764C24.2663 11.4607 24.2001 10.6406 24.059 9.83807H12.7402V14.4591H19.222C18.953 15.9494 18.0888 17.2678 16.8233 18.1056V21.1039H20.6903C22.9611 19.0139 24.2663 15.9274 24.2663 12.2764Z" fill="#4285F4"/>
-                      <path d="M12.7401 24.0008C15.9766 24.0008 18.7059 22.9382 20.6945 21.1039L16.8276 18.1055C15.7517 18.8375 14.3627 19.252 12.7445 19.252C9.61388 19.252 6.95946 17.1399 6.00705 14.3003H2.0166V17.3912C4.05371 21.4434 8.2029 24.0008 12.7401 24.0008Z" fill="#34A853"/>
-                      <path d="M6.00277 14.3003C5.50011 12.8099 5.50011 11.1961 6.00277 9.70575V6.61481H2.01674C0.314734 10.0056 0.314734 14.0004 2.01674 17.3912L6.00277 14.3003Z" fill="#FBBC04"/>
-                      <path d="M12.7401 4.74966C14.4509 4.7232 16.1044 5.36697 17.3434 6.54867L20.7695 3.12262C18.6001 1.0855 15.7208 -0.034466 12.7401 0.000808666C8.2029 0.000808666 4.05371 2.55822 2.0166 6.61481L6.00264 9.70575C6.95064 6.86173 9.60947 4.74966 12.7401 4.74966Z" fill="#EA4335"/>
-                      </g>
-                      <defs>
+                <>
+                  <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <g clipPath="url(#clip0_7697_226)">
+                      <path d="M24.2663 12.2764C24.2663 11.4607 24.2001 10.6406 24.059 9.83807H12.7402V14.4591H19.222C18.953 15.9494 18.0888 17.2678 16.8233 18.1056V21.1039H20.6903C22.9611 19.0139 24.2663 15.9274 24.2663 12.2764Z" fill="#4285F4" />
+                      <path d="M12.7401 24.0008C15.9766 24.0008 18.7059 22.9382 20.6945 21.1039L16.8276 18.1055C15.7517 18.8375 14.3627 19.252 12.7445 19.252C9.61388 19.252 6.95946 17.1399 6.00705 14.3003H2.0166V17.3912C4.05371 21.4434 8.2029 24.0008 12.7401 24.0008Z" fill="#34A853" />
+                      <path d="M6.00277 14.3003C5.50011 12.8099 5.50011 11.1961 6.00277 9.70575V6.61481H2.01674C0.314734 10.0056 0.314734 14.0004 2.01674 17.3912L6.00277 14.3003Z" fill="#FBBC04" />
+                      <path d="M12.7401 4.74966C14.4509 4.7232 16.1044 5.36697 17.3434 6.54867L20.7695 3.12262C18.6001 1.0855 15.7208 -0.034466 12.7401 0.000808666C8.2029 0.000808666 4.05371 2.55822 2.0166 6.61481L6.00264 9.70575C6.95064 6.86173 9.60947 4.74966 12.7401 4.74966Z" fill="#EA4335" />
+                    </g>
+                    <defs>
                       <clipPath id="clip0_7697_226">
-                      <rect width="24" height="24" fill="white" transform="translate(0.5)"/>
+                        <rect width="24" height="24" fill="white" transform="translate(0.5)" />
                       </clipPath>
-                      </defs>
-                    </svg>
-                    Sign in with Google
-                  </>
+                    </defs>
+                  </svg>
+                  Sign in with Google
+                </>
               </button>
 
               {/* Footer Link */}

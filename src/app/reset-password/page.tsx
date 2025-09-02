@@ -3,8 +3,9 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react'
-import { sanitizeInput } from '@/lib/utils'
+
 import { validatePassword } from '@/lib/password-validation'
+import { apiService } from '@/lib/api-service'
 
 interface FormData {
   password: string
@@ -37,28 +38,25 @@ function ResetPasswordContent() {
 
   useEffect(() => {
     const tokenParam = searchParams.get('token')
-    if (tokenParam) {
+    if (tokenParam)
+    {
       setToken(tokenParam)
       // Validate token on page load
       validateToken(tokenParam)
-    } else {
+    } else
+    {
       setTokenValid(false)
     }
   }, [searchParams])
 
   const validateToken = async (token: string) => {
-    try {
-      const response = await fetch('/api/auth/validate-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token }),
-      })
-
-      const data = await response.json()
-      setTokenValid(data.success)
-    } catch (error) {
+    try
+    {
+      // Use apiService to validate reset token
+      const response = await apiService.validateResetToken(token)
+      setTokenValid(response.success && response.data?.isValid ? true : false)
+    } catch (error)
+    {
       console.error('Token validation error:', error)
       setTokenValid(false)
     }
@@ -66,15 +64,16 @@ function ResetPasswordContent() {
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     // Enhanced input sanitization
-    const sanitizedValue = sanitizeInput(value, 'text')
-    
+    const sanitizedValue = value.trim()
+
     setFormData(prev => ({
       ...prev,
       [field]: sanitizedValue
     }))
-    
+
     // Clear error when user starts typing
-    if (errors[field]) {
+    if (errors[field])
+    {
       setErrors(prev => ({
         ...prev,
         [field]: ''
@@ -83,15 +82,17 @@ function ResetPasswordContent() {
   }
 
   const validatePasswordField = (password: string): string => {
-    if (!password) {
+    if (!password)
+    {
       return 'Password is required'
     }
-    
+
     const result = validatePassword(password)
-    if (!result.isValid) {
+    if (!result.isValid)
+    {
       return result.errors[0] || 'Password does not meet requirements'
     }
-    
+
     return ''
   }
 
@@ -105,55 +106,53 @@ function ResetPasswordContent() {
     newErrors.password = validatePasswordField(formData.password)
 
     // Validate confirm password
-    if (!formData.confirmPassword) {
+    if (!formData.confirmPassword)
+    {
       newErrors.confirmPassword = 'Please confirm your password'
-    } else if (formData.password !== formData.confirmPassword) {
+    } else if (formData.password !== formData.confirmPassword)
+    {
       newErrors.confirmPassword = 'Passwords do not match'
     }
 
     setErrors(newErrors)
-    
+
     return !Object.values(newErrors).some(error => error !== '')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!validateForm()) {
+
+    if (!validateForm())
+    {
       return
     }
 
     setIsSubmitting(true)
 
-    try {
-      const response = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          resetToken: token,
-          newPassword: formData.password,
-        }),
-      })
+    try
+    {
+      // Use apiService to reset password
+      const response = await apiService.resetPassword(token, formData.password)
 
-      const data = await response.json()
-
-      if (data.success) {
+      if (response.success)
+      {
         setShowSuccess(true)
-      } else {
+      } else
+      {
         setErrors(prev => ({
           ...prev,
-          general: data.message || 'Failed to reset password. Please try again.'
+          general: response.message || 'Failed to reset password. Please try again.'
         }))
       }
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Reset password error:', error)
       setErrors(prev => ({
         ...prev,
         general: 'Something went wrong. Please try again.'
       }))
-    } finally {
+    } finally
+    {
       setIsSubmitting(false)
     }
   }
@@ -163,7 +162,8 @@ function ResetPasswordContent() {
   }
 
   // Loading state
-  if (tokenValid === null) {
+  if (tokenValid === null)
+  {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
@@ -178,7 +178,8 @@ function ResetPasswordContent() {
   }
 
   // Invalid token state
-  if (tokenValid === false) {
+  if (tokenValid === false)
+  {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
@@ -203,7 +204,8 @@ function ResetPasswordContent() {
   }
 
   // Success state
-  if (showSuccess) {
+  if (showSuccess)
+  {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
@@ -262,9 +264,8 @@ function ResetPasswordContent() {
                 value={formData.password}
                 autoComplete='off'
                 onChange={(e) => handleInputChange('password', e.target.value)}
-                className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white pr-12 ${
-                  errors.password ? 'ring-2 ring-red-500' : ''
-                }`}
+                className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white pr-12 ${errors.password ? 'ring-2 ring-red-500' : ''
+                  }`}
                 placeholder="Enter your new password"
                 disabled={isSubmitting}
                 aria-describedby={errors.password ? 'password-error' : undefined}
@@ -301,9 +302,8 @@ function ResetPasswordContent() {
                 value={formData.confirmPassword}
                 autoComplete='off'
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white pr-12 ${
-                  errors.confirmPassword ? 'ring-2 ring-red-500' : ''
-                }`}
+                className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white pr-12 ${errors.confirmPassword ? 'ring-2 ring-red-500' : ''
+                  }`}
                 placeholder="Confirm your new password"
                 disabled={isSubmitting}
                 aria-describedby={errors.confirmPassword ? 'confirmPassword-error' : undefined}
@@ -353,11 +353,10 @@ function ResetPasswordContent() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full py-[11.4px] px-6 rounded-full font-semibold text-[20px] border-2 transition-colors duration-300 cursor-pointer flex items-center justify-center gap-2 ${
-              isSubmitting
-                ? 'bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed'
-                : 'bg-[#5046E5] text-white border-[#5046E5] hover:bg-transparent hover:text-[#5046E5]'
-            }`}
+            className={`w-full py-[11.4px] px-6 rounded-full font-semibold text-[20px] border-2 transition-colors duration-300 cursor-pointer flex items-center justify-center gap-2 ${isSubmitting
+              ? 'bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed'
+              : 'bg-[#5046E5] text-white border-[#5046E5] hover:bg-transparent hover:text-[#5046E5]'
+              }`}
             aria-describedby={isSubmitting ? 'submitting-status' : undefined}
           >
             {isSubmitting ? (
@@ -369,7 +368,7 @@ function ResetPasswordContent() {
               'Reset Password'
             )}
           </button>
-          
+
           {isSubmitting && (
             <div id="submitting-status" className="sr-only" aria-live="polite">
               Resetting your password, please wait...

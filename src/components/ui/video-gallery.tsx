@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Download, Trash2, Play, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { apiService } from '@/lib/api-service'
 
 interface Video {
   videoId: string
@@ -29,77 +30,72 @@ export default function VideoGallery({ userId, className }: VideoGalleryProps) {
   const [error, setError] = useState<string | null>(null)
   const [deletingVideo, setDeletingVideo] = useState<string | null>(null)
 
-  // Fetch videos from API
+  // Fetch videos from API using new Express backend
   const fetchVideos = async () => {
-    try {
+    try
+    {
       setLoading(true)
       setError(null)
-      
-      const response = await fetch('/api/video/gallery', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          'Content-Type': 'application/json',
-        },
-      })
-      const result = await response.json()
-      
-      if (!result.success) {
+
+      const result = await apiService.getVideoGallery()
+
+      if (!result.success || !result.data)
+      {
         throw new Error(result.message || 'Failed to fetch videos')
       }
-      
+
       setVideos(result.data.videos)
-    } catch (err: any) {
+    } catch (err: any)
+    {
       setError(err.message || 'Failed to load videos')
-    } finally {
+    } finally
+    {
       setLoading(false)
     }
   }
 
   // Delete video
   const deleteVideo = async (videoId: string) => {
-    if (!confirm('Are you sure you want to delete this video? This action cannot be undone.')) {
+    if (!confirm('Are you sure you want to delete this video? This action cannot be undone.'))
+    {
       return
     }
 
-    try {
+    try
+    {
       setDeletingVideo(videoId)
-      
-      const response = await fetch('/api/video/delete', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        },
-        body: JSON.stringify({ videoId }),
-      })
-      
-      const result = await response.json()
-      
-      if (!result.success) {
+
+      const result = await apiService.deleteVideo(videoId)
+
+      if (!result.success)
+      {
         throw new Error(result.message || 'Failed to delete video')
       }
-      
+
       // Remove video from state
       setVideos(prev => prev.filter(video => video.videoId !== videoId))
-    } catch (err: any) {
+    } catch (err: any)
+    {
       alert(err.message || 'Failed to delete video')
-    } finally {
+    } finally
+    {
       setDeletingVideo(null)
     }
   }
 
   // Download video
   const downloadVideo = async (video: Video) => {
-    if (!video.downloadUrl) {
+    if (!video.downloadUrl)
+    {
       alert('Download URL not available for this video')
       return
     }
 
-    try {
+    try
+    {
       const response = await fetch(video.downloadUrl)
       const blob = await response.blob()
-      
+
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -108,7 +104,8 @@ export default function VideoGallery({ userId, className }: VideoGalleryProps) {
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
-    } catch (err) {
+    } catch (err)
+    {
       alert('Failed to download video')
     }
   }
@@ -131,7 +128,8 @@ export default function VideoGallery({ userId, className }: VideoGalleryProps) {
 
   // Get status icon and color
   const getStatusInfo = (status: string) => {
-    switch (status) {
+    switch (status)
+    {
       case 'ready':
         return { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-100' }
       case 'processing':
@@ -148,7 +146,8 @@ export default function VideoGallery({ userId, className }: VideoGalleryProps) {
     fetchVideos()
   }, [userId])
 
-  if (loading) {
+  if (loading)
+  {
     return (
       <div className={`flex items-center justify-center p-8 ${className}`}>
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -157,7 +156,8 @@ export default function VideoGallery({ userId, className }: VideoGalleryProps) {
     )
   }
 
-  if (error) {
+  if (error)
+  {
     return (
       <div className={`p-4 ${className}`}>
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -179,7 +179,8 @@ export default function VideoGallery({ userId, className }: VideoGalleryProps) {
     )
   }
 
-  if (videos.length === 0) {
+  if (videos.length === 0)
+  {
     return (
       <div className={`text-center p-8 ${className}`}>
         <Play className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -251,7 +252,7 @@ export default function VideoGallery({ userId, className }: VideoGalleryProps) {
                     Download
                   </button>
                 )}
-                
+
                 <button
                   onClick={() => deleteVideo(video.videoId)}
                   disabled={deletingVideo === video.videoId}

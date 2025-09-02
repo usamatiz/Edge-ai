@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useAppDispatch } from '@/store/hooks'
 import { setUser, setLoading } from '@/store/slices/userSlice'
 import { isTokenExpired, validateAndHandleToken } from '@/lib/jwt-client'
+import { apiService } from '@/lib/api-service'
 
 export default function AuthInitializer() {
   const dispatch = useAppDispatch()
@@ -48,32 +49,22 @@ export default function AuthInitializer() {
         console.log('🔐 AuthInitializer: Client-side token validation passed')
         
         try {
-          // Validate token using the validate-token endpoint
-          const response = await fetch('/api/auth/validate-token', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ token: accessToken }),
-          })
+          // Validate token using the new Express backend
+          const response = await apiService.getCurrentUser()
           
-          if (response.ok) {
-            const data = await response.json()
-            
-            if (data.success) {
-              console.log('🔐 AuthInitializer: Server validation successful, setting user')
-              // Set user data in Redux store
-              dispatch(setUser({
-                user: data.data.user,
-                accessToken: accessToken
-              }))
-            } else {
-              console.log('🔐 AuthInitializer: Server validation failed')
-              // Token is invalid, remove it
-              localStorage.removeItem('accessToken')
-              localStorage.removeItem('user')
-            }
+          if (response.success && response.data) {
+            console.log('🔐 AuthInitializer: Server validation successful, setting user')
+            // Set user data in Redux store with required fields
+            dispatch(setUser({
+              user: {
+                ...response.data,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              },
+              accessToken: accessToken
+            }))
           } else {
+            console.log('🔐 AuthInitializer: Server validation failed')
             // Token is invalid, remove it
             localStorage.removeItem('accessToken')
             localStorage.removeItem('user')

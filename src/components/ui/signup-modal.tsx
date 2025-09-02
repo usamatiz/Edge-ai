@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react'
-import { sanitizeInput, RateLimiter, CSRFProtection } from '@/lib/utils'
+
 import { validatePassword, getPasswordStrength, getPasswordStrengthColor, getPasswordStrengthBgColor } from '@/lib/password-validation'
 import { useAppDispatch } from '@/store/hooks'
 import { setUser } from '@/store/slices/userSlice'
 import { validateAndHandleToken } from '@/lib/jwt-client'
+import { apiService } from '@/lib/api-service'
 
 // Google OAuth TypeScript declarations
 declare global {
@@ -62,7 +63,7 @@ interface PasswordStrength {
 
 export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrationSuccess }: SignupModalProps) {
   const dispatch = useAppDispatch()
-  
+
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
     lastName: '',
@@ -85,12 +86,12 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
   const [showSuccess, setShowSuccess] = useState(false)
   const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>({ score: 0, feedback: [] })
   const [rememberForm, setRememberForm] = useState(false)
-  
+
   // Toast state
   const [showToast, setShowToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
-  
+
   // Refs for focus management
   const modalRef = useRef<HTMLDivElement>(null)
   const firstInputRef = useRef<HTMLInputElement>(null)
@@ -107,25 +108,20 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
 
   // Phone number is now optional and accepts any format
 
-  // Enhanced input sanitization with security utilities
+  // Simple input sanitization
   const enhancedSanitizeInput = (value: string, type: 'text' | 'email' | 'phone' | 'name' = 'text'): string => {
-    return sanitizeInput(value, type)
+    return value.trim();
   }
-
-  // Initialize rate limiter for form submissions
-  const rateLimiter = useRef(new RateLimiter(5, 60000)) // 5 attempts per minute
 
   // CSRF token management
   const [csrfToken, setCsrfToken] = useState<string>('')
-  
+
   useEffect(() => {
-    if (isOpen) {
-      // Generate CSRF token when modal opens
-      CSRFProtection.generateToken().then(token => {
-        setCsrfToken(token)
-      }).catch(error => {
-        console.error('Failed to generate CSRF token:', error)
-      })
+    if (isOpen)
+    {
+      // Generate simple CSRF token
+      const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      setCsrfToken(token);
     }
   }, [isOpen])
 
@@ -133,15 +129,15 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
   // const checkRateLimit = (): boolean => {
   //   const now = Date.now()
   //   const timeSinceLastSubmission = now - lastSubmissionTime
-    
+
   //   if (timeSinceLastSubmission < 2000) { // 2 seconds cooldown
   //     return false
   //   }
-    
+
   //   if (submissionCount >= 5 && timeSinceLastSubmission < 60000) { // 5 attempts per minute
   //     return false
   //   }
-    
+
   //   return true
   // }
 
@@ -150,7 +146,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
     setToastMessage(message)
     setToastType(type)
     setShowToast(true)
-    
+
     // Auto hide toast after 3 seconds
     setTimeout(() => {
       setShowToast(false)
@@ -161,13 +157,17 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
     let processedValue = value
 
     // Apply field-specific processing with enhanced security
-    if (field === 'phone') {
+    if (field === 'phone')
+    {
       processedValue = enhancedSanitizeInput(value, 'phone')
-    } else if (field === 'email') {
+    } else if (field === 'email')
+    {
       processedValue = enhancedSanitizeInput(value, 'email')
-    } else if (field === 'firstName' || field === 'lastName') {
+    } else if (field === 'firstName' || field === 'lastName')
+    {
       processedValue = enhancedSanitizeInput(value, 'name')
-    } else {
+    } else
+    {
       processedValue = enhancedSanitizeInput(value, 'text')
     }
 
@@ -175,14 +175,16 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
       ...prev,
       [field]: processedValue
     }))
-    
+
     // Real-time password strength check (keep this for better UX)
-    if (field === 'password') {
+    if (field === 'password')
+    {
       setPasswordStrength(checkPasswordStrength(processedValue))
     }
-    
+
     // Clear error when user starts typing (keep this for better UX)
-    if (errors[field]) {
+    if (errors[field])
+    {
       setErrors(prev => ({
         ...prev,
         [field]: ''
@@ -208,27 +210,35 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
     // Validate each field and collect errors
     Object.entries(formData).forEach(([key, value]) => {
       const field = key as keyof FormData
-      switch (field) {
+      switch (field)
+      {
         case 'firstName':
-          if (!value.trim()) {
+          if (!value.trim())
+          {
             newErrors.firstName = 'First Name is required'
-          } else if (value.length < 2) {
+          } else if (value.length < 2)
+          {
             newErrors.firstName = 'First Name must be at least 2 characters'
-          } else if (!/^[a-zA-Z\s]+$/.test(value)) {
+          } else if (!/^[a-zA-Z\s]+$/.test(value))
+          {
             newErrors.firstName = 'First Name can only contain letters and spaces'
           }
           break
         case 'lastName':
-          if (!value.trim()) {
+          if (!value.trim())
+          {
             newErrors.lastName = 'Last Name is required'
-          } else if (value.length < 2) {
+          } else if (value.length < 2)
+          {
             newErrors.lastName = 'Last Name must be at least 2 characters'
-          } else if (!/^[a-zA-Z\s]+$/.test(value)) {
+          } else if (!/^[a-zA-Z\s]+$/.test(value))
+          {
             newErrors.lastName = 'Last Name can only contain letters and spaces'
           }
           break
         case 'email':
-          if (!value.trim()) {
+          if (!value.trim())
+          {
             newErrors.email = 'Email is required'
           }
           break
@@ -236,19 +246,24 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
           // Phone is optional and accepts any format
           break
         case 'password':
-          if (!value.trim()) {
+          if (!value.trim())
+          {
             newErrors.password = 'Password is required'
-          } else {
+          } else
+          {
             const passwordResult = validatePassword(value)
-            if (!passwordResult.isValid) {
+            if (!passwordResult.isValid)
+            {
               newErrors.password = passwordResult.errors[0] || 'Password does not meet requirements'
             }
           }
           break
         case 'confirmPassword':
-          if (!value.trim()) {
+          if (!value.trim())
+          {
             newErrors.confirmPassword = 'Confirm Password is required'
-          } else if (value !== formData.password) {
+          } else if (value !== formData.password)
+          {
             newErrors.confirmPassword = 'Passwords do not match'
           }
           break
@@ -257,33 +272,35 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
 
     // Set the errors
     setErrors(newErrors)
-    
+
     // Return true if no errors, false if there are errors
     return !Object.values(newErrors).some(error => error !== '')
   }
 
   const handleSignup = async () => {
-    // Enhanced rate limiting check using RateLimiter class
-    const clientId = `signup_${formData.email || 'anonymous'}`
-    if (rateLimiter.current.isRateLimited(clientId)) {
-      const remaining = rateLimiter.current.getRemainingAttempts(clientId)
-      const errorMessage = remaining === 0 
-        ? 'Too many signup attempts. Please wait 1 minute before trying again.'
-        : `Please wait before trying again. ${remaining} attempts remaining.`
-      
-      showToastMessage(errorMessage, 'error')
-      return
+    // Simple rate limiting check
+    const now = Date.now();
+    const lastAttempt = localStorage.getItem('lastSignupAttempt') || '0';
+    const attemptCount = parseInt(localStorage.getItem('signupAttemptCount') || '0');
+
+    if (now - parseInt(lastAttempt) < 60000 && attemptCount >= 5)
+    {
+      showToastMessage('Too many signup attempts. Please wait 1 minute before trying again.', 'error');
+      return;
     }
 
     // CSRF token validation
-    if (!CSRFProtection.validateToken(csrfToken)) {
-      showToastMessage('Security token invalid. Please refresh and try again.', 'error')
-      return
+    if (!csrfToken)
+    {
+      showToastMessage('Security token invalid. Please refresh and try again.', 'error');
+      return;
     }
 
-    if (!validateForm()) {
+    if (!validateForm())
+    {
       // Announce errors to screen readers
-      if (errorAnnouncementRef.current) {
+      if (errorAnnouncementRef.current)
+      {
         errorAnnouncementRef.current.textContent = 'Form has validation errors. Please check all fields.'
       }
       showToastMessage('Please fix the validation errors before submitting.', 'error')
@@ -292,76 +309,88 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
 
     setIsSubmitting(true)
 
-    try {
-      // Call the registration API
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-csrf-token': csrfToken,
-        },
-        body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          phone: formData.phone, // Store phone number as entered
-          password: formData.password
-        }),
+    try
+    {
+      // Call the registration API using new Express backend
+      const response = await apiService.register({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password
       })
 
-      const data = await response.json()
+      const data = response
 
-      if (data.success) {
+      if (data.success)
+      {
         // Clear saved form data from localStorage after successful registration
         localStorage.removeItem('signupFormData')
 
+        // Update rate limiting
+        localStorage.setItem('lastSignupAttempt', now.toString());
+        localStorage.setItem('signupAttemptCount', '0');
+
         // Show success message
         showToastMessage('Account created successfully! Please check your email for verification.', 'success')
-        
+
         // Call the success callback with email
         onRegistrationSuccess?.(formData.email)
-        
+
         // Close the signup modal after showing success message
         setTimeout(() => {
           handleSuccessfulClose()
         }, 3000)
 
-      } else {
+      } else
+      {
+        // Increment rate limiting counter
+        const newCount = attemptCount + 1;
+        localStorage.setItem('signupAttemptCount', newCount.toString());
+
         // Handle specific error cases
-        if (data.message.includes('already exists')) {
+        if (data.message.includes('already exists'))
+        {
           showToastMessage('An account with this email already exists. Please sign in instead.', 'error')
-        } else {
+        } else
+        {
           showToastMessage(data.message || 'Registration failed. Please try again.', 'error')
         }
       }
 
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Registration error:', error)
       showToastMessage('Network error. Please check your connection and try again.', 'error')
-    } finally {
+    } finally
+    {
       setIsSubmitting(false)
     }
   }
 
   const handleGoogleSignup = async () => {
-    try {
+    try
+    {
       // Initialize Google OAuth
-      if (typeof window !== 'undefined' && window.google) {
+      if (typeof window !== 'undefined' && window.google)
+      {
         // Use Google Identity Services
         const client = window.google.accounts.oauth2.initTokenClient({
           client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
           scope: 'openid email profile',
           callback: async (response: { access_token?: string; error?: string }) => {
-            if (response.access_token) {
+            if (response.access_token)
+            {
               await handleGoogleToken(response.access_token)
-            } else {
+            } else
+            {
               showToastMessage('Google authentication failed. Please try again.', 'error')
             }
           },
         })
-        
+
         client.requestAccessToken()
-      } else {
+      } else
+      {
         // Fallback to traditional OAuth flow
         const authUrl = `https://accounts.google.com/o/oauth2/auth?` +
           `client_id=${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}&` +
@@ -369,17 +398,19 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
           `scope=${encodeURIComponent('openid email profile')}&` +
           `response_type=code&` +
           `access_type=offline`
-        
+
         window.location.href = authUrl
       }
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Google signup error:', error)
       showToastMessage('Google authentication failed. Please try again.', 'error')
     }
   }
 
   const handleGoogleToken = async (accessToken: string) => {
-    try {
+    try
+    {
       // Get user info from Google
       const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
         headers: {
@@ -387,49 +418,55 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
         },
       })
 
-      if (!userInfoResponse.ok) {
+      if (!userInfoResponse.ok)
+      {
         throw new Error('Failed to get user info from Google')
       }
 
       const userInfo = await userInfoResponse.json()
 
-      // Call your backend API with Google user data
-      const response = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-csrf-token': csrfToken,
-        },
-        body: JSON.stringify({
-          googleId: userInfo.id,
-          email: userInfo.email,
-          firstName: userInfo.given_name,
-          lastName: userInfo.family_name,
-        }),
+      // Call your backend API with Google user data using apiService
+      const response = await apiService.googleLogin({
+        googleId: userInfo.id,
+        email: userInfo.email,
+        firstName: userInfo.given_name || '',
+        lastName: userInfo.family_name || ''
       })
 
-      const data = await response.json()
+      const data = response
 
-      if (data.success) {
+      if (data.success && data.data)
+      {
         // Validate JWT token before storing
         const accessToken = data.data.accessToken;
-        if (!validateAndHandleToken(accessToken)) {
+        if (!validateAndHandleToken(accessToken))
+        {
           showToastMessage('Invalid token received. Please try again.', 'error');
           return;
         }
-        
+
         // Store the access token
         localStorage.setItem('accessToken', accessToken)
-        
+
         // Dispatch Redux action to set user data
         dispatch(setUser({
-          user: data.data.user,
+          user: {
+            id: data.data.user.id,
+            email: data.data.user.email,
+            firstName: data.data.user.firstName,
+            lastName: data.data.user.lastName,
+            phone: data.data.user.phone || '',
+            isEmailVerified: data.data.user.isEmailVerified,
+            googleId: undefined,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
           accessToken: accessToken
         }))
 
         // Clear saved form data from localStorage after successful registration
         localStorage.removeItem('signupFormData')
-        
+
         setFormData({
           firstName: '',
           lastName: '',
@@ -446,21 +483,23 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
           password: '',
           confirmPassword: ''
         })
-        
+
         // Show success message
-        const welcomeMessage = data.data.isNewUser 
+        const welcomeMessage = data.data.isNewUser
           ? `Welcome to EdgeAi, ${data.data.user.firstName}! Your account has been created successfully.`
           : `Welcome back to EdgeAi, ${data.data.user.firstName}!`
         showToastMessage(welcomeMessage, 'success')
-        
+
         // Close modal after success message (give user time to see the toast)
         setTimeout(() => {
           handleSuccessfulClose()
         }, 3000)
-      } else {
+      } else
+      {
         showToastMessage(data.message || 'Google signup failed. Please try again.', 'error')
       }
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Google token handling error:', error)
       showToastMessage('Failed to complete Google authentication. Please try again.', 'error')
     }
@@ -524,11 +563,12 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
 
   // Focus management and accessibility
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen)
+    {
       // Prevent body scroll when modal is open
       const originalStyle = window.getComputedStyle(document.body).overflow
       document.body.style.overflow = 'hidden'
-      
+
       // Focus first input when modal opens
       setTimeout(() => {
         firstInputRef.current?.focus()
@@ -536,24 +576,30 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
 
       // Trap focus within modal
       const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
+        if (e.key === 'Escape')
+        {
           handleClose()
         }
-        
-        if (e.key === 'Tab' && modalRef.current) {
+
+        if (e.key === 'Tab' && modalRef.current)
+        {
           const focusableElements = modalRef.current.querySelectorAll(
             'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
           )
           const firstElement = focusableElements[0] as HTMLElement
           const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement
 
-          if (e.shiftKey) {
-            if (document.activeElement === firstElement) {
+          if (e.shiftKey)
+          {
+            if (document.activeElement === firstElement)
+            {
               e.preventDefault()
               lastElement.focus()
             }
-          } else {
-            if (document.activeElement === lastElement) {
+          } else
+          {
+            if (document.activeElement === lastElement)
+            {
               e.preventDefault()
               firstElement.focus()
             }
@@ -572,7 +618,8 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
 
   // Load saved form data on mount and clear errors when modal opens
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen)
+    {
       // Clear all error states and form data when modal opens
       setFormData({
         firstName: '',
@@ -597,14 +644,18 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
       setIsSubmitting(false)
       setShowPassword(false)
       setShowConfirmPassword(false)
-    } else {
+    } else
+    {
       // Load saved form data when modal is closed (only if there's saved data)
       const savedData = localStorage.getItem('signupFormData')
-      if (savedData) {
-        try {
+      if (savedData)
+      {
+        try
+        {
           const parsedData = JSON.parse(savedData)
           setFormData(prev => ({ ...prev, ...parsedData }))
-        } catch (error) {
+        } catch (error)
+        {
           console.error('Error loading saved form data:', error)
         }
       }
@@ -613,7 +664,8 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
 
   // Load Google OAuth script
   useEffect(() => {
-    if (typeof window !== 'undefined' && !window.google) {
+    if (typeof window !== 'undefined' && !window.google)
+    {
       const script = document.createElement('script')
       script.src = 'https://accounts.google.com/gsi/client'
       script.async = true
@@ -629,11 +681,10 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
       {/* Toast Notification */}
       {showToast && (
         <div className="fixed top-4 right-4 z-[60] animate-in slide-in-from-right-2">
-          <div className={`px-4 py-3 rounded-lg shadow-lg max-w-sm ${
-            toastType === 'success' 
-              ? 'bg-green-500 text-white' 
-              : 'bg-red-500 text-white'
-          }`}>
+          <div className={`px-4 py-3 rounded-lg shadow-lg max-w-sm ${toastType === 'success'
+            ? 'bg-green-500 text-white'
+            : 'bg-red-500 text-white'
+            }`}>
             <div className="flex items-center gap-2">
               {toastType === 'success' ? (
                 <CheckCircle className="w-5 h-5" />
@@ -647,7 +698,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
       )}
 
       <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-        <div 
+        <div
           ref={modalRef}
           className="bg-white rounded-[12px] md:px-[55px] px-4 pt-10 pb-10 max-w-[820px] w-full max-h-[726px] flex flex-col relative"
           role="dialog"
@@ -656,22 +707,22 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
           aria-describedby="signup-modal-description"
         >
           {/* Screen reader announcements */}
-          <div 
+          <div
             ref={errorAnnouncementRef}
             className="sr-only"
             aria-live="polite"
             aria-atomic="true"
           />
           <button
-              onClick={handleClose}
-              className="cursor-pointer md:ml-4 md:absolute md:top-[30px] md:right-[30px] absolute top-[20px] right-[20px]"
-              aria-label="Close signup modal"
-            >
-              <svg width="24" height="24" className="md:w-6 md:h-6 w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22.5 1.5L1.5 22.5M1.5 1.5L22.5 22.5" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+            onClick={handleClose}
+            className="cursor-pointer md:ml-4 md:absolute md:top-[30px] md:right-[30px] absolute top-[20px] right-[20px]"
+            aria-label="Close signup modal"
+          >
+            <svg width="24" height="24" className="md:w-6 md:h-6 w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22.5 1.5L1.5 22.5M1.5 1.5L22.5 22.5" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </button>
-          
+
           {/* Success Message */}
           {showSuccess && (
             <div className="absolute inset-0 bg-white rounded-[12px] flex items-center justify-center z-10">
@@ -708,7 +759,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
             <form onSubmit={(e) => { e.preventDefault(); handleSignup(); }}>
               {/* CSRF Token (hidden) */}
               <input type="hidden" name="csrf_token" value={csrfToken} />
-              
+
               {/* Form Fields - Two Columns */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-4 mb-4">
                 {/* First Name */}
@@ -726,9 +777,8 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
                     placeholder="Enter First Name"
                     aria-describedby={errors.firstName ? 'firstName-error' : undefined}
                     aria-invalid={!!errors.firstName}
-                    className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
-                      errors.firstName ? 'ring-2 ring-red-500' : ''
-                    }`}
+                    className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${errors.firstName ? 'ring-2 ring-red-500' : ''
+                      }`}
                   />
                   {errors.firstName && (
                     <p id="firstName-error" className="text-red-500 text-sm mt-1 flex items-center gap-1">
@@ -752,9 +802,8 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
                     placeholder="Enter Last Name"
                     aria-describedby={errors.lastName ? 'lastName-error' : undefined}
                     aria-invalid={!!errors.lastName}
-                    className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
-                      errors.lastName ? 'ring-2 ring-red-500' : ''
-                    }`}
+                    className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${errors.lastName ? 'ring-2 ring-red-500' : ''
+                      }`}
                   />
                   {errors.lastName && (
                     <p id="lastName-error" className="text-red-500 text-sm mt-1 flex items-center gap-1">
@@ -775,9 +824,8 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
                     onChange={(e) => handleInputChange('email', e.target.value)}
                     onBlur={handleInputBlur}
                     placeholder="Enter Email"
-                    className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
-                      errors.email ? 'ring-2 ring-red-500' : ''
-                    }`}
+                    className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${errors.email ? 'ring-2 ring-red-500' : ''
+                      }`}
                   />
                   {errors.email && (
                     <p className="text-red-500 text-sm mt-1">{errors.email}</p>
@@ -795,9 +843,8 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
                     onChange={(e) => handleInputChange('phone', e.target.value)}
                     onBlur={handleInputBlur}
                     placeholder="Enter Phone"
-                    className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${
-                      errors.phone ? 'ring-2 ring-red-500' : ''
-                    }`}
+                    className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white ${errors.phone ? 'ring-2 ring-red-500' : ''
+                      }`}
                   />
                   {errors.phone && (
                     <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
@@ -820,9 +867,8 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
                       placeholder="**********"
                       aria-describedby={errors.password ? 'password-error' : 'password-strength'}
                       aria-invalid={!!errors.password}
-                      className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white pr-12 ${
-                        errors.password ? 'ring-2 ring-red-500' : ''
-                      }`}
+                      className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white pr-12 ${errors.password ? 'ring-2 ring-red-500' : ''
+                        }`}
                     />
                     <button
                       type="button"
@@ -833,7 +879,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
                       {showPassword ? <EyeOff className="w-5 h-5 text-[#98A2B3]" /> : <Eye className="w-5 h-5 text-[#98A2B3]" />}
                     </button>
                   </div>
-                  
+
                   {/* Password Strength Indicator */}
                   {formData.password && (
                     <div id="password-strength" className="mt-2">
@@ -845,11 +891,10 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
                             return (
                               <div
                                 key={level}
-                                className={`w-2 h-2 rounded-full ${
-                                  level <= passwordStrength.score
-                                    ? getPasswordStrengthBgColor(strength)
-                                    : 'bg-gray-300'
-                                }`}
+                                className={`w-2 h-2 rounded-full ${level <= passwordStrength.score
+                                  ? getPasswordStrengthBgColor(strength)
+                                  : 'bg-gray-300'
+                                  }`}
                               />
                             )
                           })}
@@ -870,7 +915,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
                       )}
                     </div>
                   )}
-                  
+
                   {errors.password && (
                     <p id="password-error" className="text-red-500 text-sm mt-1 flex items-center gap-1">
                       <AlertCircle className="w-4 h-4" />
@@ -892,9 +937,8 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
                       onBlur={handleInputBlur}
                       autoComplete="off"
                       placeholder="**********"
-                      className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white pr-12 ${
-                        errors.confirmPassword ? 'ring-2 ring-red-500' : ''
-                      }`}
+                      className={`w-full px-4 py-3 bg-[#EEEEEE] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] focus:outline-none focus:ring-2 focus:ring-[#5046E5] focus:bg-white pr-12 ${errors.confirmPassword ? 'ring-2 ring-red-500' : ''
+                        }`}
                     />
                     <button
                       type="button"
@@ -914,11 +958,10 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`w-full py-[11.4px] px-6 rounded-full font-semibold text-[20px] border-2 transition-colors duration-300 cursor-pointer mb-6 flex items-center justify-center gap-2 ${
-                  isSubmitting
-                    ? 'bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed'
-                    : 'bg-[#5046E5] text-white border-[#5046E5] hover:bg-transparent hover:text-[#5046E5]'
-                }`}
+                className={`w-full py-[11.4px] px-6 rounded-full font-semibold text-[20px] border-2 transition-colors duration-300 cursor-pointer mb-6 flex items-center justify-center gap-2 ${isSubmitting
+                  ? 'bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed'
+                  : 'bg-[#5046E5] text-white border-[#5046E5] hover:bg-transparent hover:text-[#5046E5]'
+                  }`}
                 aria-describedby={isSubmitting ? 'submitting-status' : undefined}
               >
                 {isSubmitting ? (
@@ -930,7 +973,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
                   'Sign Up'
                 )}
               </button>
-              
+
               {isSubmitting && (
                 <div id="submitting-status" className="sr-only" aria-live="polite">
                   Creating your account, please wait...
@@ -945,15 +988,15 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
               >
                 <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <g clipPath="url(#clip0_7697_226)">
-                  <path d="M24.2663 12.2764C24.2663 11.4607 24.2001 10.6406 24.059 9.83807H12.7402V14.4591H19.222C18.953 15.9494 18.0888 17.2678 16.8233 18.1056V21.1039H20.6903C22.9611 19.0139 24.2663 15.9274 24.2663 12.2764Z" fill="#4285F4"/>
-                  <path d="M12.7401 24.0008C15.9766 24.0008 18.7059 22.9382 20.6945 21.1039L16.8276 18.1055C15.7517 18.8375 14.3627 19.252 12.7445 19.252C9.61388 19.252 6.95946 17.1399 6.00705 14.3003H2.0166V17.3912C4.05371 21.4434 8.2029 24.0008 12.7401 24.0008Z" fill="#34A853"/>
-                  <path d="M6.00277 14.3003C5.50011 12.8099 5.50011 11.1961 6.00277 9.70575V6.61481H2.01674C0.314734 10.0056 0.314734 14.0004 2.01674 17.3912L6.00277 14.3003Z" fill="#FBBC04"/>
-                  <path d="M12.7401 4.74966C14.4509 4.7232 16.1044 5.36697 17.3434 6.54867L20.7695 3.12262C18.6001 1.0855 15.7208 -0.034466 12.7401 0.000808666C8.2029 0.000808666 4.05371 2.55822 2.0166 6.61481L6.00264 9.70575C6.95064 6.86173 9.60947 4.74966 12.7401 4.74966Z" fill="#EA4335"/>
+                    <path d="M24.2663 12.2764C24.2663 11.4607 24.2001 10.6406 24.059 9.83807H12.7402V14.4591H19.222C18.953 15.9494 18.0888 17.2678 16.8233 18.1056V21.1039H20.6903C22.9611 19.0139 24.2663 15.9274 24.2663 12.2764Z" fill="#4285F4" />
+                    <path d="M12.7401 24.0008C15.9766 24.0008 18.7059 22.9382 20.6945 21.1039L16.8276 18.1055C15.7517 18.8375 14.3627 19.252 12.7445 19.252C9.61388 19.252 6.95946 17.1399 6.00705 14.3003H2.0166V17.3912C4.05371 21.4434 8.2029 24.0008 12.7401 24.0008Z" fill="#34A853" />
+                    <path d="M6.00277 14.3003C5.50011 12.8099 5.50011 11.1961 6.00277 9.70575V6.61481H2.01674C0.314734 10.0056 0.314734 14.0004 2.01674 17.3912L6.00277 14.3003Z" fill="#FBBC04" />
+                    <path d="M12.7401 4.74966C14.4509 4.7232 16.1044 5.36697 17.3434 6.54867L20.7695 3.12262C18.6001 1.0855 15.7208 -0.034466 12.7401 0.000808666C8.2029 0.000808666 4.05371 2.55822 2.0166 6.61481L6.00264 9.70575C6.95064 6.86173 9.60947 4.74966 12.7401 4.74966Z" fill="#EA4335" />
                   </g>
                   <defs>
-                  <clipPath id="clip0_7697_226">
-                  <rect width="24" height="24" fill="white" transform="translate(0.5)"/>
-                  </clipPath>
+                    <clipPath id="clip0_7697_226">
+                      <rect width="24" height="24" fill="white" transform="translate(0.5)" />
+                    </clipPath>
                   </defs>
                 </svg>
 

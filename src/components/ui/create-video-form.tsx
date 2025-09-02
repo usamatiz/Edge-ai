@@ -9,7 +9,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { AppDispatch, RootState } from '@/store'
 import { setVideoLoading, setVideoError, createVideoRequest, clearVideoError, VideoRequest } from '@/store/slices/videoSlice'
 import CreateVideoModal from './create-video-modal'
-import { sanitizeInput, RateLimiter } from '@/lib/utils'
+
 import { IoMdArrowDropdown } from "react-icons/io";
 
 // Zod validation schema
@@ -82,7 +82,7 @@ interface CreateVideoFormProps {
 export default function CreateVideoForm({ className }: CreateVideoFormProps) {
   const dispatch = useDispatch<AppDispatch>()
   const { isLoading, error } = useSelector((state: RootState) => state.video)
-  
+
   const [showSuccessToast] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -99,7 +99,9 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
   } | null>(null)
 
   // Security features
-  const rateLimiter = useRef(new RateLimiter(3, 60000)) // 3 video requests per minute
+  // Simple rate limiting
+  const [lastSubmission, setLastSubmission] = useState(0);
+  const [submissionCount, setSubmissionCount] = useState(0);
 
   const {
     register,
@@ -115,30 +117,31 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
   })
 
   const onSubmit = async (data: CreateVideoFormData) => {
-    // Rate limiting check
-    const clientId = `video_${data.email || 'anonymous'}`
-    if (rateLimiter.current.isRateLimited(clientId)) {
-      const remaining = rateLimiter.current.getRemainingAttempts(clientId)
-      alert(`Rate limit exceeded. Please wait before creating another video. ${remaining} attempts remaining.`)
-      return
+    // Simple rate limiting check
+    const now = Date.now();
+    if (now - lastSubmission < 60000 && submissionCount >= 3)
+    {
+      alert('Rate limit exceeded. Please wait 1 minute before creating another video.');
+      return;
     }
 
     dispatch(setVideoLoading(true))
-    try {
+    try
+    {
       // Sanitize all input data before processing
       const sanitizedData: CreateVideoFormData = {
         ...data,
-        name: sanitizeInput(data.name, 'name'),
-        companyName: sanitizeInput(data.companyName, 'text'),
-        license: sanitizeInput(data.license, 'text'),
-        tailoredFit: sanitizeInput(data.tailoredFit, 'text'),
-        socialHandles: sanitizeInput(data.socialHandles, 'text'),
-        videoTopic: sanitizeInput(data.videoTopic, 'text'),
-        topicKeyPoints: sanitizeInput(data.topicKeyPoints, 'text'),
-        city: sanitizeInput(data.city, 'name'),
-        preferredTone: sanitizeInput(data.preferredTone, 'text'),
-        callToAction: sanitizeInput(data.callToAction, 'text'),
-        email: sanitizeInput(data.email, 'email'),
+        name: data.name.trim(),
+        companyName: data.companyName.trim(),
+        license: data.license.trim(),
+        tailoredFit: data.tailoredFit.trim(),
+        socialHandles: data.socialHandles.trim(),
+        videoTopic: data.videoTopic.trim(),
+        topicKeyPoints: data.topicKeyPoints.trim(),
+        city: data.city.trim(),
+        preferredTone: data.preferredTone.trim(),
+        callToAction: data.callToAction.trim(),
+        email: data.email.trim(),
         prompt: data.prompt,
         avatar: data.avatar,
         position: data.position
@@ -153,19 +156,20 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
         body: JSON.stringify(sanitizedData),
       });
 
-      if (!response.ok) {
+      if (!response.ok)
+      {
         const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.message || 'Failed to create video');
       }
 
       const result = await response.json();
-      
-        // Extract webhook response data
-        const webhookData = result.data.webhookResponse;
-        console.log('Raw webhook response data:', webhookData);
-       
-       // Use the original form data for fields that weren't returned by webhook
-       const decodedResponse = {
+
+      // Extract webhook response data
+      const webhookData = result.data.webhookResponse;
+      console.log('Raw webhook response data:', webhookData);
+
+      // Use the original form data for fields that weren't returned by webhook
+      const decodedResponse = {
         prompt: decodeURIComponent(webhookData?.hook || ''),
         description: decodeURIComponent(webhookData?.body || ''),
         conclusion: decodeURIComponent(webhookData?.conclusion || ''),
@@ -174,10 +178,10 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
         license: webhookData?.license || data.license,
         avatar: webhookData?.avatar || data.avatar,
         email: webhookData?.email || data.email
-        }
-       console.log('Setting webhook response:', decodedResponse);
-       setWebhookResponse(decodedResponse)
-      
+      }
+      console.log('Setting webhook response:', decodedResponse);
+      setWebhookResponse(decodedResponse)
+
       // Create video request object for Redux
       const videoRequest: VideoRequest = {
         requestId: result.data.requestId,
@@ -199,25 +203,31 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
         status: result.data.status,
         webhookResponse: result.data.webhookResponse
       }
-      
+
       // Store in Redux (this will also save videoTopic to state)
       dispatch(createVideoRequest(videoRequest))
-      
+
       // Open modal with webhook response data
       setIsModalOpen(true)
-       
+
+      // Update rate limiting
+      setLastSubmission(now);
+      setSubmissionCount(prev => prev + 1);
+
       // Clear any previous errors
       dispatch(clearVideoError())
-       
-        // Reset form after modal is opened
-        setTimeout(() => {
-          reset()
-          // Don't clear webhookResponse here - let the modal use it
-        }, 100)
-    } catch (error: any) {
+
+      // Reset form after modal is opened
+      setTimeout(() => {
+        reset()
+        // Don't clear webhookResponse here - let the modal use it
+      }, 100)
+    } catch (error: any)
+    {
       console.error('Error submitting form:', error)
       dispatch(setVideoError(error.message || 'Failed to create video'))
-    } finally {
+    } finally
+    {
       dispatch(setVideoLoading(false))
     }
   }
@@ -230,10 +240,12 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
 
   const handleDropdownToggle = (field: keyof CreateVideoFormData) => {
     const isOpen = openDropdown === field
-    if (isOpen) {
+    if (isOpen)
+    {
       // If closing dropdown without selection, trigger validation
       const currentValue = watch(field)
-      if (!currentValue || currentValue.trim() === '') {
+      if (!currentValue || currentValue.trim() === '')
+      {
         // Trigger validation for this field only if no value is selected
         setValue(field, '', { shouldValidate: true })
       }
@@ -260,23 +272,23 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
           onBlur={() => {
             setTimeout(() => {
               const currentValue = watch(field)
-              if ((!currentValue || currentValue.trim() === '') && openDropdown === field) {
+              if ((!currentValue || currentValue.trim() === '') && openDropdown === field)
+              {
                 setValue(field, '', { shouldValidate: true })
               }
             }, 100)
           }}
-          className={`w-full px-4 py-[10.5px] text-[18px] font-normal bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-left transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white flex items-center justify-between cursor-pointer ${
-            hasError ? 'ring-2 ring-red-500' : ''
-          } ${selectedOption ? 'text-gray-800 bg-[#F5F5F5]' : 'text-[#11101066]'}`}
+          className={`w-full px-4 py-[10.5px] text-[18px] font-normal bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-left transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white flex items-center justify-between cursor-pointer ${hasError ? 'ring-2 ring-red-500' : ''
+            } ${selectedOption ? 'text-gray-800 bg-[#F5F5F5]' : 'text-[#11101066]'}`}
           aria-describedby={hasError ? `${field}-error` : undefined}
           aria-invalid={hasError ? 'true' : 'false'}
         >
           <span>{selectedOption ? selectedOption.label : placeholder}</span>
-          <IoMdArrowDropdown 
-            className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} 
+          <IoMdArrowDropdown
+            className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
           />
         </button>
-        
+
         {isOpen && (
           <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-[8px] shadow-lg max-h-60 overflow-y-auto">
             {options.map((option) => (
@@ -294,7 +306,7 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
             ))}
           </div>
         )}
-        
+
         {hasError && (
           <p id={`${field}-error`} className="text-red-500 text-sm mt-1 flex items-center gap-1" role="alert">
             <AlertCircle className="w-4 h-4" />
@@ -312,7 +324,7 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
     autoComplete?: string
   ) => {
     const hasError = errors[field]
-    
+
     return (
       <div className="relative">
         <input
@@ -322,9 +334,8 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
           autoComplete={autoComplete}
           aria-describedby={hasError ? `${field}-error` : undefined}
           aria-invalid={hasError ? 'true' : 'false'}
-          className={`w-full px-4 py-[10.5px] text-[18px] font-normal placeholder:text-[#11101066] bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-gray-800 transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white ${
-            hasError ? 'ring-2 ring-red-500' : ''
-          }`}
+          className={`w-full px-4 py-[10.5px] text-[18px] font-normal placeholder:text-[#11101066] bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-gray-800 transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white ${hasError ? 'ring-2 ring-red-500' : ''
+            }`}
         />
         {hasError && (
           <p id={`${field}-error`} className="text-red-500 text-sm mt-1 flex items-center gap-1" role="alert">
@@ -354,8 +365,8 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-7">
-        
-        
+
+
         {/* Error Display */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -368,7 +379,7 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
             </div>
           </div>
         )}
-        
+
         {/* Row 1 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
@@ -377,21 +388,21 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
             </label>
             {renderDropdown('prompt', promptOptions, 'Select Option')}
           </div>
-          
+
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Avatar <span className="text-red-500">*</span>
             </label>
             {renderDropdown('avatar', avatarOptions, 'Select Option')}
           </div>
-          
+
           <div>
-              <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
+            <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Name <span className="text-red-500">*</span>
             </label>
             {renderInput('name', 'e.g. John Smith', 'text', 'name')}
           </div>
-          
+
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Position <span className="text-red-500">*</span>
@@ -408,21 +419,21 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
             </label>
             {renderInput('companyName', 'e.g. Keller Williams', 'text', 'organization')}
           </div>
-          
+
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               License <span className="text-red-500">*</span>
             </label>
             {renderInput('license', 'e.g. License #12345', 'text')}
           </div>
-          
+
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Tailored Fit <span className="text-red-500">*</span>
             </label>
             {renderInput('tailoredFit', 'e.g. First-time buyer specialist', 'text')}
           </div>
-          
+
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Social Handles <span className="text-red-500">*</span>
@@ -439,21 +450,21 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
             </label>
             {renderInput('city', 'e.g. Los Angeles', 'text', 'address-level2')}
           </div>
-          
+
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Preferred Tone <span className="text-red-500">*</span>
             </label>
             {renderInput('preferredTone', 'e.g. Professional, friendly, etc.', 'text')}
           </div>
-          
+
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Call to Action <span className="text-red-500">*</span>
             </label>
             {renderInput('callToAction', 'e.g. Call for consultation', 'text')}
           </div>
-          
+
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Email <span className="text-red-500">*</span>
@@ -470,7 +481,7 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
             </label>
             {renderInput('videoTopic', 'e.g. Market trends, new listing', 'text')}
           </div>
-          
+
           <div>
             <label className="block text-[16px] font-normal text-[#5F5F5F] mb-1">
               Topic Key Points <span className="text-red-500">*</span>
@@ -503,30 +514,31 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
 
       {/* Click outside to close dropdowns */}
       {openDropdown && (
-        <div 
-          className="fixed inset-0 z-40" 
-                     onClick={() => {
-             // If closing dropdown without selection, trigger validation
-             const currentValue = watch(openDropdown as keyof CreateVideoFormData)
-             if (!currentValue || currentValue.trim() === '') {
-               // Trigger validation for this field only if no value is selected
-               setValue(openDropdown as keyof CreateVideoFormData, '', { shouldValidate: true })
-             }
-             setOpenDropdown(null)
-           }}
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => {
+            // If closing dropdown without selection, trigger validation
+            const currentValue = watch(openDropdown as keyof CreateVideoFormData)
+            if (!currentValue || currentValue.trim() === '')
+            {
+              // Trigger validation for this field only if no value is selected
+              setValue(openDropdown as keyof CreateVideoFormData, '', { shouldValidate: true })
+            }
+            setOpenDropdown(null)
+          }}
         />
       )}
 
-             {/* Create Video Modal */}
-       <CreateVideoModal
-         isOpen={isModalOpen}
-         onClose={() => {
-           setIsModalOpen(false)
-           setWebhookResponse(null) // Clear webhookResponse when modal closes
-         }}
-         videoTitle={formDataForModal?.prompt || 'Custom Video'}
-         webhookResponse={webhookResponse}
-       />
+      {/* Create Video Modal */}
+      <CreateVideoModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false)
+          setWebhookResponse(null) // Clear webhookResponse when modal closes
+        }}
+        videoTitle={formDataForModal?.prompt || 'Custom Video'}
+        webhookResponse={webhookResponse}
+      />
     </div>
   )
 }

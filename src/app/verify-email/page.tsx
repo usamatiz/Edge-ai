@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { apiService } from '@/lib/api-service';
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -15,42 +16,42 @@ function VerifyEmailContent() {
   useEffect(() => {
     const verifyEmail = async () => {
       const token = searchParams.get('token');
-      
+
       // Prevent multiple verification attempts for the same token
-      if (hasVerifiedRef.current || !token || tokenRef.current === token) {
+      if (hasVerifiedRef.current || !token || tokenRef.current === token)
+      {
         return;
       }
 
       // Store the token to prevent re-verification
       tokenRef.current = token;
-      
-      if (!token) {
+
+      if (!token)
+      {
         setStatus('error');
         setMessage('Verification token is missing');
         hasVerifiedRef.current = true;
         return;
       }
 
-      try {
-        const response = await fetch(`/api/auth/verify-email?token=${token}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+      try
+      {
+        // Use new Express backend via apiService
+        const response = await apiService.verifyEmail(token);
 
-        const data = await response.json();
-
-        if (data.success) {
+        if (response.success)
+        {
           setStatus('success');
-          setMessage(data.message || 'Email verified successfully!');
+          setMessage(response.message || 'Email verified successfully!');
           hasVerifiedRef.current = true;
-        } else {
+        } else
+        {
           setStatus('error');
-          setMessage(data.message || 'Email verification failed');
+          setMessage(response.message || 'Email verification failed');
           hasVerifiedRef.current = true;
         }
-      } catch (error) {
+      } catch (error)
+      {
         console.error('Verification error:', error);
         setStatus('error');
         setMessage('An error occurred during verification');
@@ -81,7 +82,7 @@ function VerifyEmailContent() {
               Verifying your email address to complete your registration
             </p>
           </div>
-          
+
           {/* Content */}
           <div className="text-center">
             {status === 'loading' && (
