@@ -29,4 +29,3 @@ export function handleAnchorClick(href: string, onClose?: () => void) {
   }
   return false; // Indicates this was a regular link
 }
-

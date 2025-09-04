@@ -1,7 +1,11 @@
 // Backend API Configuration
 export const API_CONFIG = {
-  // Express Backend URL
-  BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000',
+  // Express Backend URL - default to localhost for backend auth
+  BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://192.168.3.49:4000',
+  
+  // Payment API URL
+  PAYMENT_API_URL: process.env.NEXT_PUBLIC_PAYMENT_API_URL || 'http://192.168.3.49:4000',
+
   
   // API Endpoints
   ENDPOINTS: {
@@ -39,6 +43,14 @@ export const API_CONFIG = {
       VIDEO_COMPLETE: '/api/webhook/video-complete',
     },
     
+
+    
+    // Payment endpoints
+    PAYMENT: {
+      PAYMENT_INTENT: '/api/subscription/payment-intent',
+      CONFIRM_PAYMENT: '/api/subscription/confirm-payment-intent',
+    },
+    
     // Other endpoints
     CONTACT: '/api/contact',
     HEALTH: '/health',
@@ -54,11 +66,21 @@ export const API_CONFIG = {
     TOKEN_KEY: 'accessToken',
     REFRESH_TOKEN_KEY: 'refreshToken',
   },
+  
+  // Stripe Configuration
+  STRIPE: {
+    PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_51S0FwKB2p93NE0UDmno6UgFck98LzeVeFkxWZnJiXDMYKnSpy8WMFrS9fcjSC3G1tovRnMAfUCz24C6DMCxCSdZr00T0OcEjk5',
+  },
 };
 
 // Helper function to get full API URL
 export const getApiUrl = (endpoint: string): string => {
   return `${API_CONFIG.BACKEND_URL}${endpoint}`;
+};
+
+// Helper function to get payment API URL
+export const getPaymentApiUrl = (endpoint: string): string => {
+  return `${API_CONFIG.PAYMENT_API_URL}${endpoint}`;
 };
 
 // Helper function to get auth headers

@@ -1,4 +1,4 @@
-import { getApiUrl, getAuthHeaders, getAuthenticatedHeaders } from './config';
+import { getApiUrl, getAuthHeaders, getAuthenticatedHeaders, getPaymentApiUrl, API_CONFIG } from './config';
 
 // API Response Types
 export interface ApiResponse<T = any> {
@@ -68,15 +68,49 @@ export interface CSRFResponse {
   expires: number;
 }
 
+// Payment Types
+export interface PaymentIntentRequest {
+  planId: string;
+}
+
+export interface PaymentIntentResponse {
+  amount: number;
+  currency: string;
+  paymentIntent: {
+    id: string;
+    client_secret: string;
+    amount: number;
+    currency: string;
+    status: string;
+    [key: string]: any;
+  };
+}
+
+export interface ConfirmPaymentRequest {
+  paymentIntentId: string;
+  paymentMethodId: string;
+}
+
+export interface SubscriptionResponse {
+  subscriptionId: string;
+  status: string;
+  plan: {
+    id: string;
+    name: string;
+    price: number;
+  };
+}
+
 // API Service Class
 class ApiService {
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
     requireAuth: boolean = false,
-    requireCSRF: boolean = false
+    requireCSRF: boolean = false,
+    usePaymentApi: boolean = false
   ): Promise<ApiResponse<T>> {
-    const url = getApiUrl(endpoint);
+    const url = usePaymentApi ? getPaymentApiUrl(endpoint) : getApiUrl(endpoint);
     
     const headers = requireAuth 
       ? getAuthenticatedHeaders(requireCSRF)
@@ -266,6 +300,27 @@ class ApiService {
     return this.request('/health', {
       method: 'GET',
     });
+  }
+
+  // Payment Methods - Using JWT auth with CSRF protection like email functions
+  async createPaymentIntent(planId: string): Promise<ApiResponse<PaymentIntentResponse>> {
+    // Get CSRF token first
+    await this.getCSRFToken();
+    
+    return this.request<PaymentIntentResponse>(API_CONFIG.ENDPOINTS.PAYMENT.PAYMENT_INTENT, {
+      method: 'POST',
+      body: JSON.stringify({ planId }),
+    }, true, true, true);
+  }
+
+  async confirmPaymentIntent(paymentIntentId: string, paymentMethodId: string): Promise<ApiResponse<SubscriptionResponse>> {
+    // Get CSRF token first
+    await this.getCSRFToken();
+    
+    return this.request<SubscriptionResponse>(API_CONFIG.ENDPOINTS.PAYMENT.CONFIRM_PAYMENT, {
+      method: 'POST',
+      body: JSON.stringify({ paymentIntentId, paymentMethodId }),
+    }, true, true, true);
   }
 }
 

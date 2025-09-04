@@ -13,3 +13,5 @@ export { default as PaymentDetailsSection } from "./payment-details-section";
 export { default as AuthLoader } from "./auth-loader";
 export { default as EmailVerificationModal } from "./email-verification-modal";
 export { default as VideoGallery } from "./video-gallery";
+export { default as PaymentModal } from "./payment-modal";
+export { default as StripeCheckout } from "./stripe-checkout";

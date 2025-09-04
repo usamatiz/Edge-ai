@@ -342,7 +342,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
 
             <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
               {/* CSRF Token (hidden) */}
-              <input type="hidden" name="csrf_token" value={csrfToken} />
+              <input type="hidden" name="csrf_token" value={csrfToken} readOnly />
 
               {/* Form Fields */}
               <div className="space-y-4">

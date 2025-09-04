@@ -1,8 +1,9 @@
 "use client";
 
-import * as React from "react";
+import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { AvatarCreationModal } from './avatar-creation';
 // import Image from "next/image";
 
 interface Step {
@@ -38,6 +39,8 @@ const steps: Step[] = [
 ];
 
 export function ProcessSteps({ className }: ProcessStepsProps) {
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+
   return (
     <section className={cn("w-full py-14 bg-white", className)}>
       <div className="max-w-[1260px] mx-auto xl:px-0 px-3">
@@ -129,15 +132,33 @@ export function ProcessSteps({ className }: ProcessStepsProps) {
         </div>
 
         {/* CTA Button */}
-        <div className="text-center">
-          <Link 
+        <div className="text-center flex gap-4 justify-center flex-wrap">
+          {/* <Link 
             href="#faq" 
             className="inline-flex items-center gap-3 bg-transparent border-2 border-[#5046E5] text-[#5046E5] hover:bg-[#5046E5] hover:text-white py-[15.4px] rounded-full text-[16px] font-semibold transition-all duration-300 group max-w-[340px] w-full text-center justify-center mx-auto"
           >
             Have More Questions? See our FAQ
+          </Link> */}
+          <button 
+            onClick={() => setIsAvatarModalOpen(true)}
+            className="inline-flex md:w-fit w-full items-center gap-3 bg-transparent border-2 border-[#5046E5] text-[#5046E5] hover:bg-[#5046E5] hover:text-white py-[7.4px] rounded-full text-[20px] font-semibold transition-colors duration-300 group md:max-w-[192px] max-w-full text-center justify-center px-4"
+          >
+            Custom Avatar
+          </button>
+          <Link 
+            href="/create-video/new?source=defaultAvatar"
+            className="inline-flex md:w-fit w-full items-center gap-3 border-2 border-[#5046E5] text-white hover:text-[#5046E5] hover:bg-transparent bg-[#5046E5] py-[7.4px] rounded-full text-[20px] font-semibold transition-all duration-300 group md:max-w-[186px] max-w-full text-center justify-center px-4"
+          >
+            Default Avatar
           </Link>
         </div>
       </div>
+
+      {/* Avatar Creation Modal */}
+      <AvatarCreationModal 
+        isOpen={isAvatarModalOpen}
+        onClose={() => setIsAvatarModalOpen(false)}
+      />
     </section>
   );
 }

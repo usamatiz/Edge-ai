@@ -230,6 +230,9 @@ export default function CreateVideoModal({ isOpen, onClose, startAtComplete = fa
       setIsDownloading(true)
       
       // Use our proxy to avoid CORS issues
+      if (!videoData?.youtubeUrl) {
+        throw new Error('No video URL available for download')
+      }
       const proxyUrl = `/api/video/download-proxy?url=${encodeURIComponent(videoData.youtubeUrl)}`
       
       // Fetch the video through our proxy
@@ -269,7 +272,8 @@ export default function CreateVideoModal({ isOpen, onClose, startAtComplete = fa
 
 
 
-  const getYouTubeEmbedUrl = (url: string) => {
+  const getYouTubeEmbedUrl = (url: string | undefined) => {
+    if (!url) return ''
     const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]
     return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0` : url
   }
@@ -413,8 +417,8 @@ export default function CreateVideoModal({ isOpen, onClose, startAtComplete = fa
                        {/* Video Preview */}
                        <div className="relative mt-7 h-[420px] w-full aspect-video bg-gray-100 rounded-[8px] overflow-hidden">
                        <video
-                          src={videoData.youtubeUrl} 
-                          title={videoData.title}
+                          src={videoData?.youtubeUrl || ''} 
+                          title={videoData?.title || 'Video'}
                           className="w-full h-full rounded-[8px] object-contain cursor-pointer"
                           controls
                           preload="metadata"

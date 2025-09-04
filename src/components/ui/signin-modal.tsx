@@ -756,7 +756,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
 
             <form onSubmit={(e) => { e.preventDefault(); handleSignin(); }}>
               {/* CSRF Token (hidden) */}
-              <input type="hidden" name="csrf_token" value={csrfToken} />
+              <input type="hidden" name="csrf_token" value={csrfToken} readOnly />
 
               {/* Form Fields */}
               <div className="space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4">

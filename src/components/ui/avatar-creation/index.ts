@@ -1,0 +1,12 @@
+export { default as AvatarCreationModal } from './AvatarCreationModal'
+export { default as Step1Intro } from './steps/Step1Intro'
+export { default as Step2ChooseType } from './steps/Step2ChooseType'
+export { default as Step3VideoUpload } from './steps/Step3VideoUpload'
+export { default as Step4WebcamRecord } from './steps/Step4WebcamRecord'
+export { default as Step5QRCode } from './steps/Step5QRCode'
+export { default as Step6PhotoInstructions } from './steps/Step6PhotoInstructions'
+export { default as Step7PhotoUpload } from './steps/Step7PhotoUpload'
+export { default as Step8Details } from './steps/Step8Details'
+export { default as Step9AvatarReady } from './steps/Step9AvatarReady'
+
+export type { AvatarType } from './AvatarCreationModal'

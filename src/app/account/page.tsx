@@ -239,7 +239,7 @@ export default function AccountPage() {
             />
 
             {/* Payment Details Section */}
-            {/* <PaymentDetailsSection
+            <PaymentDetailsSection
               data={paymentData}
               errors={{
                 cardNumber: errors.cardNumber,
@@ -250,7 +250,7 @@ export default function AccountPage() {
               onChange={handlePaymentInputChange}
               openDropdown={openDropdown}
               onDropdownToggle={handleDropdownToggle}
-            /> */}
+            />
 
             {/* Update Button */}
             <div className="flex justify-center">
