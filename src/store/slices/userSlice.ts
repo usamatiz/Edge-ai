@@ -35,7 +35,6 @@ const userSlice = createSlice({
   initialState,
   reducers: {
     setUser: (state: UserState, action: PayloadAction<{ user: User; accessToken: string; tokenExpiry?: number }>) => {
-      // console.log('🔐 Redux: setUser action called with:', { user: action.payload.user.email, hasToken: !!action.payload.accessToken })
       state.user = action.payload.user;
       state.accessToken = action.payload.accessToken;
       state.tokenExpiry = action.payload.tokenExpiry || (Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days default

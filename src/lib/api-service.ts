@@ -1,4 +1,4 @@
-import { getApiUrl, getAuthHeaders, getAuthenticatedHeaders, getPaymentApiUrl, API_CONFIG } from './config';
+import { getApiUrl, getAuthHeaders, getAuthenticatedHeaders, API_CONFIG } from './config';
 
 // API Response Types
 export interface ApiResponse<T = any> {
@@ -30,6 +30,13 @@ export interface UserData {
   isEmailVerified: boolean;
   googleId?: string;    // Google login includes this field
   // Backend doesn't send createdAt/updatedAt in auth responses
+}
+
+export interface UserResponse {
+  success: boolean;
+  data: {
+    user: UserData;
+  };
 }
 
 export interface AuthResponse {
@@ -86,20 +93,56 @@ export interface PaymentIntentResponse {
   };
 }
 
-export interface ConfirmPaymentRequest {
-  paymentIntentId: string;
-  paymentMethodId: string;
+export interface SubscriptionData {
+  id: string;
+  userId: string;
+  planId: string;
+  stripeSubscriptionId: string;
+  stripeCustomerId: string;
+  status: 'active' | 'inactive' | 'cancelled' | 'past_due';
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  cancelAtPeriodEnd: boolean;
+  videoCount: number;
+  videoLimit: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface SubscriptionResponse {
-  subscriptionId: string;
-  status: string;
-  plan: {
-    id: string;
-    name: string;
-    price: number;
+export interface CurrentSubscriptionResponse {
+  success: boolean;
+  message: string;
+  data: {
+    subscription: SubscriptionData;
   };
 }
+
+// Billing History Types
+export interface BillingTransaction {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  description: string;
+  stripeInvoiceId: string;
+  stripePaymentIntentId: string;
+  subscriptionId: string;
+  planId: string;
+  createdAt: string;
+  updatedAt: string;
+  formattedAmount: string;
+}
+
+export interface BillingHistoryResponse {
+  success: boolean;
+  message: string;
+  data: {
+    transactions: BillingTransaction[];
+    total: number;
+    hasMore: boolean;
+  };
+}
+
 
 // API Service Class
 class ApiService {
@@ -107,10 +150,9 @@ class ApiService {
     endpoint: string,
     options: RequestInit = {},
     requireAuth: boolean = false,
-    requireCSRF: boolean = false,
-    usePaymentApi: boolean = false
+    requireCSRF: boolean = false
   ): Promise<ApiResponse<T>> {
-    const url = usePaymentApi ? getPaymentApiUrl(endpoint) : getApiUrl(endpoint);
+    const url = getApiUrl(endpoint);
     
     const headers = requireAuth 
       ? getAuthenticatedHeaders(requireCSRF)
@@ -141,7 +183,7 @@ class ApiService {
 
   // CSRF Token Management
   async getCSRFToken(): Promise<string> {
-    const response = await this.request<CSRFResponse>('/api/auth/csrf-token');
+    const response = await this.request<CSRFResponse>(API_CONFIG.ENDPOINTS.AUTH.CSRF_TOKEN);
     if (response.success && response.data?.token) {
       localStorage.setItem('csrfToken', response.data.token);
       return response.data.token;
@@ -154,7 +196,7 @@ class ApiService {
     // Get CSRF token first
     await this.getCSRFToken();
     
-    return this.request<AuthResponse>('/api/auth/register', {
+    return this.request<AuthResponse>(API_CONFIG.ENDPOINTS.AUTH.REGISTER, {
       method: 'POST',
       body: JSON.stringify(userData),
     }, false, true);
@@ -164,26 +206,26 @@ class ApiService {
     // Get CSRF token first
     await this.getCSRFToken();
     
-    return this.request<AuthResponse>('/api/auth/login', {
+    return this.request<AuthResponse>(API_CONFIG.ENDPOINTS.AUTH.LOGIN, {
       method: 'POST',
       body: JSON.stringify(loginData),
     }, false, true);
   }
 
   async logout(): Promise<ApiResponse> {
-    return this.request('/api/auth/logout', {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.LOGOUT, {
       method: 'POST',
     }, true, true);
   }
 
-  async getCurrentUser(): Promise<ApiResponse<UserData>> {
-    return this.request<UserData>('/api/auth/me', {
+  async getCurrentUser(): Promise<ApiResponse<{ user: UserData }>> {
+    return this.request<{ user: UserData }>(API_CONFIG.ENDPOINTS.AUTH.ME, {
       method: 'GET',
-    }, true);
+    }, true, false);
   }
 
-  async updateProfile(profileData: Partial<UserData>): Promise<ApiResponse<UserData>> {
-    return this.request<UserData>('/api/auth/profile', {
+  async updateProfile(profileData: Partial<UserData>): Promise<ApiResponse<{ user: UserData }>> {
+    return this.request<{ user: UserData }>(API_CONFIG.ENDPOINTS.AUTH.PROFILE, {
       method: 'PUT',
       body: JSON.stringify(profileData),
     }, true, true);
@@ -193,7 +235,7 @@ class ApiService {
     // Get CSRF token first
     await this.getCSRFToken();
     
-    return this.request('/api/auth/forgot-password', {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.FORGOT_PASSWORD, {
       method: 'POST',
       body: JSON.stringify({ email }),
     }, false, true);
@@ -203,7 +245,7 @@ class ApiService {
     // Get CSRF token first
     await this.getCSRFToken();
     
-    return this.request('/api/auth/reset-password', {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.RESET_PASSWORD, {
       method: 'POST',
       body: JSON.stringify({ resetToken: token, newPassword: password }),
     }, false, true);
@@ -213,16 +255,14 @@ class ApiService {
     // Get CSRF token first
     await this.getCSRFToken();
     
-    return this.request<{ isValid: boolean }>('/api/auth/validate-reset-token', {
+    return this.request<{ isValid: boolean }>(API_CONFIG.ENDPOINTS.AUTH.VALIDATE_TOKEN, {
       method: 'POST',
       body: JSON.stringify({ token }),
     }, false, true);
   }
 
   async verifyEmail(token: string): Promise<ApiResponse> {
-    return this.request(`/api/auth/verify-email?token=${token}`, {
-
-        
+    return this.request(`${API_CONFIG.ENDPOINTS.AUTH.VERIFY_EMAIL}?token=${token}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -239,7 +279,7 @@ class ApiService {
     // Get CSRF token first
     await this.getCSRFToken();
     
-    return this.request<AuthResponse>('/api/auth/google', {
+    return this.request<AuthResponse>(API_CONFIG.ENDPOINTS.AUTH.GOOGLE_LOGIN, {
       method: 'POST',
       body: JSON.stringify(googleData),
     }, false, true);
@@ -249,26 +289,75 @@ class ApiService {
     // Get CSRF token first
     await this.getCSRFToken();
     
-    return this.request('/api/auth/resend-verification', {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.RESEND_VERIFICATION, {
       method: 'POST',
       body: JSON.stringify({ email }),
     }, false, true);
   }
 
-  async getVideoGallery(): Promise<ApiResponse<{ videos: any[] }>> {
-    return this.request<{ videos: any[] }>('/api/video/gallery', {
+  async getVideoGallery(): Promise<ApiResponse<{
+    videos: any[];
+    totalCount: number;
+    readyCount: number;
+    processingCount: number;
+    failedCount: number;
+  }>> {
+    return this.request<{
+      videos: any[];
+      totalCount: number;
+      readyCount: number;
+      processingCount: number;
+      failedCount: number;
+    }>(API_CONFIG.ENDPOINTS.VIDEO.GALLERY, {
       method: 'GET',
     }, true, false);
   }
 
+  async createVideo(videoData: any): Promise<ApiResponse<any>> {
+    return this.request<any>(API_CONFIG.ENDPOINTS.VIDEO.CREATE, {
+      method: 'POST',
+      body: JSON.stringify(videoData),
+    }, true, true);
+  }
+
   async deleteVideo(videoId: string): Promise<ApiResponse> {
-    return this.request(`/api/video/${videoId}`, {
+    return this.request(`${API_CONFIG.ENDPOINTS.VIDEO.DELETE}/${videoId}`, {
       method: 'DELETE',
     }, true, false);
   }
 
+  async getVideoStatus(videoId: string): Promise<ApiResponse<any>> {
+    return this.request<any>(`${API_CONFIG.ENDPOINTS.VIDEO.STATUS}/${videoId}`, {
+      method: 'GET',
+    }, true, false);
+  }
+
+  async downloadVideo(videoId: string): Promise<ApiResponse<any>> {
+    return this.request<any>(`${API_CONFIG.ENDPOINTS.VIDEO.DOWNLOAD}/${videoId}`, {
+      method: 'GET',
+    }, true, false);
+  }
+
+  async downloadVideoFromUrl(videoUrl: string, userId: string, title: string): Promise<ApiResponse<any>> {
+    return this.request<any>(API_CONFIG.ENDPOINTS.VIDEO.DOWNLOAD, {
+      method: 'POST',
+      body: JSON.stringify({
+        videoUrl,
+        userId,
+        title
+      }),
+    }, true, true);
+  }
+
+  async generateVideo(videoData: any): Promise<ApiResponse<any>> {
+    return this.request<any>(API_CONFIG.ENDPOINTS.VIDEO.GENERATE, {
+      method: 'POST',
+      body: JSON.stringify(videoData),
+    }, true, true);
+  }
+
   async checkEmail(email: string): Promise<ApiResponse<{ exists: boolean }>> {
-    return this.request<{ exists: boolean }>(`/api/auth/check-email?email=${encodeURIComponent(email)}`, {
+    return this.request<{ exists: boolean }>(`${API_CONFIG.ENDPOINTS.AUTH.CHECK_EMAIL}?email=${encodeURIComponent(email)}`, {
       method: 'GET',
     }, false, false);
   }
@@ -277,7 +366,7 @@ class ApiService {
     // Get CSRF token first
     await this.getCSRFToken();
     
-    return this.request<{ isVerified: boolean }>('/api/auth/check-email-verification', {
+    return this.request<{ isVerified: boolean }>(API_CONFIG.ENDPOINTS.AUTH.CHECK_EMAIL_VERIFICATION, {
       method: 'POST',
       body: JSON.stringify({ email }),
     }, false, true);
@@ -289,7 +378,7 @@ class ApiService {
     email: string;
     message: string;
   }): Promise<ApiResponse> {
-    return this.request('/api/contact', {
+    return this.request(API_CONFIG.ENDPOINTS.CONTACT, {
       method: 'POST',
       body: JSON.stringify(messageData),
     });
@@ -297,7 +386,7 @@ class ApiService {
 
   // Health Check
   async healthCheck(): Promise<ApiResponse> {
-    return this.request('/health', {
+    return this.request(API_CONFIG.ENDPOINTS.HEALTH, {
       method: 'GET',
     });
   }
@@ -310,17 +399,45 @@ class ApiService {
     return this.request<PaymentIntentResponse>(API_CONFIG.ENDPOINTS.PAYMENT.PAYMENT_INTENT, {
       method: 'POST',
       body: JSON.stringify({ planId }),
-    }, true, true, true);
+    }, true, true);
   }
 
-  async confirmPaymentIntent(paymentIntentId: string, paymentMethodId: string): Promise<ApiResponse<SubscriptionResponse>> {
+  // Subscription Methods
+  async getPricingPlans(): Promise<ApiResponse<{ plans: any[] }>> {
+    return this.request<{ plans: any[] }>(API_CONFIG.ENDPOINTS.SUBSCRIPTION.PLANS, {
+      method: 'GET',
+    }, false, false);
+  }
+
+  async getCurrentSubscription(): Promise<ApiResponse<{ subscription: SubscriptionData }>> {
+    return this.request<{ subscription: SubscriptionData }>(API_CONFIG.ENDPOINTS.SUBSCRIPTION.CURRENT, {
+      method: 'GET',
+    }, true, false);
+  }
+
+  async getBillingHistory(): Promise<ApiResponse<{ transactions: BillingTransaction[]; total: number; hasMore: boolean }>> {
+    return this.request<{ transactions: BillingTransaction[]; total: number; hasMore: boolean }>(API_CONFIG.ENDPOINTS.SUBSCRIPTION.BILLING_HISTORY, {
+      method: 'GET',
+    }, true, false);
+  }
+
+  async changeSubscriptionPlan(newPlanId: string): Promise<ApiResponse<any>> {
     // Get CSRF token first
     await this.getCSRFToken();
     
-    return this.request<SubscriptionResponse>(API_CONFIG.ENDPOINTS.PAYMENT.CONFIRM_PAYMENT, {
+    return this.request<any>(API_CONFIG.ENDPOINTS.SUBSCRIPTION.CHANGE_PLAN, {
       method: 'POST',
-      body: JSON.stringify({ paymentIntentId, paymentMethodId }),
-    }, true, true, true);
+      body: JSON.stringify({ newPlanId }),
+    }, true, true);
+  }
+
+  async cancelSubscription(): Promise<ApiResponse<any>> {
+    // Get CSRF token first
+    await this.getCSRFToken();
+    
+    return this.request<any>(API_CONFIG.ENDPOINTS.SUBSCRIPTION.CANCEL, {
+      method: 'POST',
+    }, true, true);
   }
 }
 

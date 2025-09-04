@@ -28,23 +28,19 @@ interface ProfileInfoSectionProps {
   errors: ProfileFormErrors
   onChange: (field: keyof ProfileFormData, value: string) => void
   isEmailVerified?: boolean
+  onUpdateProfile?: () => void
+  isUpdating?: boolean
 }
 
-export default function ProfileInfoSection({ data, errors, onChange, isEmailVerified = false }: ProfileInfoSectionProps) {
+export default function ProfileInfoSection({ data, errors, onChange, isEmailVerified = false, onUpdateProfile, isUpdating = false }: ProfileInfoSectionProps) {
   const dispatch = useAppDispatch()
   const [showPassword, setShowPassword] = useState(false)
   const [showToast, setShowToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
 
-  // Phone number is now optional and accepts any format
-
   const handleInputChange = (field: keyof ProfileFormData, value: string) => {
-    let processedValue = value
-
-    // Simple input sanitization
-    processedValue = value.trim();
-
+    const processedValue = value.trim()
     onChange(field, processedValue)
   }
 
@@ -66,7 +62,7 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
       if (response.success && response.data)
       {
         // Update user data in Redux store
-        dispatch(updateUser(response.data))
+        dispatch(updateUser(response.data.user))
       }
     } catch (error)
     {
@@ -76,7 +72,6 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
 
   // Periodically refresh user data to check for email verification status updates
   useEffect(() => {
-    // Only refresh if email is not verified
     if (!isEmailVerified)
     {
       const interval = setInterval(() => {
@@ -86,8 +81,6 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
       return () => clearInterval(interval)
     }
   }, [isEmailVerified])
-
-  // Phone number accepts any format - no formatting needed
 
   const handleResendVerification = async () => {
     try
@@ -128,7 +121,7 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
           <input
             id="firstName"
             type="text"
-            value={data.firstName}
+            value={data.firstName || ''}
             onChange={(e) => handleInputChange('firstName', e.target.value)}
             placeholder="Enter First Name"
             aria-describedby={errors.firstName ? 'firstName-error' : undefined}
@@ -152,7 +145,7 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
           <input
             id="lastName"
             type="text"
-            value={data.lastName}
+            value={data.lastName || ''}
             onChange={(e) => handleInputChange('lastName', e.target.value)}
             placeholder="Enter Last Name"
             aria-describedby={errors.lastName ? 'lastName-error' : undefined}
@@ -176,7 +169,7 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
           <input
             id="email"
             type="email"
-            value={data.email}
+            value={data.email || ''}
             readOnly
             disabled
             placeholder="Enter Email"
@@ -200,7 +193,6 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
           )}
           {isEmailVerified && (
             <div className="mt-1 flex items-center gap-1">
-              {/* <Mail className="w-3 h-3 text-green-500" /> */}
               <span className="text-[10px] text-green-600 pl-1">Email verified</span>
             </div>
           )}
@@ -220,7 +212,7 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
           <input
             id="phone"
             type="tel"
-            value={data.phone}
+            value={data.phone || ''}
             onChange={(e) => handleInputChange('phone', e.target.value)}
             placeholder="Enter Phone"
             aria-describedby={errors.phone ? 'phone-error' : undefined}
@@ -274,6 +266,30 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
           </p>
         )}
       </div>
+
+      {/* Update Profile Button */}
+      {onUpdateProfile && (
+        <div className="flex justify-center mt-8">
+          <button
+            type="button"
+            onClick={onUpdateProfile}
+            disabled={isUpdating}
+            className={`px-8 py-3 rounded-lg font-medium text-white transition-colors duration-200 ${isUpdating
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-[#5046E5] hover:bg-[#4338CA]'
+              }`}
+          >
+            {isUpdating ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Updating...
+              </div>
+            ) : (
+              'Update Profile'
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Toast Notification */}
       {showToast && (

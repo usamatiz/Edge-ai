@@ -14,11 +14,11 @@ interface StripeCheckoutProps {
   onCancel?: () => void;
 }
 
-export default function StripeCheckout({ 
-  planName, 
-  planPrice, 
-  onSuccess, 
-  onCancel 
+export default function StripeCheckout({
+  planName,
+  planPrice,
+  onSuccess,
+  onCancel
 }: StripeCheckoutProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -28,15 +28,17 @@ export default function StripeCheckout({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!stripe || !elements) {
+    if (!stripe || !elements)
+    {
       return;
     }
 
     setIsProcessing(true);
 
-    try {
+    try
+    {
       console.log('🔐 Processing payment with CSRF protection');
-      
+
       // Confirm the payment
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
@@ -46,32 +48,34 @@ export default function StripeCheckout({
         redirect: 'if_required',
       });
 
-      if (error) {
+      if (error)
+      {
         showNotification(error.message || 'Payment failed. Please try again.', 'error');
         setIsProcessing(false);
         return;
       }
 
-      if (paymentIntent?.status === 'succeeded') {
-        console.log('✅ Payment succeeded, confirming with backend');
-        
-        // Confirm payment with backend using apiService with CSRF protection
-        const confirmResponse = await apiService.confirmPaymentIntent(
-          paymentIntent.id,
-          paymentIntent.payment_method as string
-        );
+      if (paymentIntent?.status === 'succeeded')
+      {
+        console.log('✅ Payment succeeded, redirecting to create video page');
 
-        if (confirmResponse.success) {
-          showNotification('Payment successful! Your subscription is now active.', 'success');
-          onSuccess?.(confirmResponse.data);
-        } else {
-          showNotification('Payment processing failed. Please contact support.', 'error');
-        }
+        // Show success notification
+        showNotification('Payment successful! Your subscription is now active.', 'success');
+
+        // Redirect to create video page after a short delay
+        setTimeout(() => {
+          window.location.href = '/create-video';
+        }, 2000);
+
+        // Call onSuccess callback
+        onSuccess?.(paymentIntent);
       }
-    } catch (error: any) {
+    } catch (error: any)
+    {
       console.error('Payment error:', error);
       showNotification(error.message || 'Payment failed. Please try again.', 'error');
-    } finally {
+    } finally
+    {
       setIsProcessing(false);
     }
   };
@@ -102,7 +106,7 @@ export default function StripeCheckout({
             <CreditCard className="w-5 h-5 text-gray-600" />
             <span className="font-medium text-gray-900">Payment Details</span>
           </div>
-          <PaymentElement 
+          <PaymentElement
             options={{
               layout: 'tabs',
             }}
@@ -121,7 +125,7 @@ export default function StripeCheckout({
               Cancel
             </button>
           )}
-          
+
           <button
             type="submit"
             disabled={!stripe || isProcessing}

@@ -6,6 +6,7 @@ import { clearUser, setLoading } from '@/store/slices/userSlice'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { apiService } from '@/lib/api-service'
 
 interface ProfileDropdownProps {
   isMobile?: boolean
@@ -17,6 +18,7 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
   const dispatch = useAppDispatch()
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
+
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
 
@@ -69,16 +71,13 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
       if (onClose) onClose()
 
       // Call logout API to invalidate token on server
-      const accessToken = localStorage.getItem('accessToken')
-      if (accessToken)
+      try
       {
-        await fetch('/api/auth/logout', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        })
+        await apiService.logout()
+      } catch (error)
+      {
+        // Log error but don't prevent logout from proceeding
+        console.error('Logout API call failed:', error)
       }
 
       // Clear user data from Redux store
@@ -106,6 +105,22 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
   }
 
   if (!currentUser) return null
+
+  // Show loading state if user data is still being fetched
+  if (currentUser.id === 'temp' || currentUser.firstName === 'Loading...')
+  {
+    return (
+      <div className={cn(
+        "flex items-center space-x-2 px-3 py-2 rounded-full",
+        isMobile ? "w-full justify-center" : ""
+      )}>
+        <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+        {isMobile && (
+          <div className="w-20 h-4 bg-gray-200 rounded animate-pulse"></div>
+        )}
+      </div>
+    )
+  }
 
   const menuItems = [
     {
@@ -149,7 +164,7 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
           </svg>
           <span className={cn(
             "font-medium text-[#5F5F5F]",
-            isMobile ? "text-[20px]" : "text-[20px] hidden lg:block"
+            isMobile ? "text-[20px]" : "text-[20px]"
           )}>
             {isMobile
               ? `${currentUser.firstName} ${currentUser.lastName}`

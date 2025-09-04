@@ -31,7 +31,8 @@ export default function GlobalNotification() {
   if (!isVisible) return null
 
   const getIcon = () => {
-    switch (type) {
+    switch (type)
+    {
       case 'success':
         return (
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -60,7 +61,8 @@ export default function GlobalNotification() {
   }
 
   const getBackgroundColor = () => {
-    switch (type) {
+    switch (type)
+    {
       case 'success':
         return 'bg-green-50 border-green-200 text-green-800'
       case 'error':

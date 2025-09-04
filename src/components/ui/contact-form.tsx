@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { PiHeadsetBold } from "react-icons/pi"
+import { apiService } from '@/lib/api-service'
 
 // Zod validation schema
 const contactFormSchema = z.object({
@@ -34,27 +35,29 @@ export default function ContactForm() {
   const onSubmit = async (data: ContactFormData) => {
     setIsSubmitting(true)
     setSubmitError(null)
-    try {
-      const response = await fetch('/api/contact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
+    try
+    {
+      const response = await apiService.sendContactMessage({
+        name: data.fullName,
+        email: data.email,
+        message: data.question
       })
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to submit form')
+      if (response.success)
+      {
+        setSubmitSuccess(true)
+        reset()
+        setTimeout(() => setSubmitSuccess(false), 5000)
+      } else
+      {
+        throw new Error(response.message || 'Failed to submit form')
       }
-
-      setSubmitSuccess(true)
-      reset()
-      setTimeout(() => setSubmitSuccess(false), 5000)
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Error submitting form:', error)
       setSubmitError(error instanceof Error ? error.message : 'Failed to submit form. Please try again.')
-    } finally {
+    } finally
+    {
       setIsSubmitting(false)
     }
   }
@@ -63,7 +66,7 @@ export default function ContactForm() {
     <section className="bg-white py-16">
       <div className="max-w-[1260px] mx-auto px-3">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-14 items-start">
-          
+
           {/* Left Section - Information */}
           <div className="space-y-8">
             {/* Real Support Guarantee Box */}
@@ -84,7 +87,7 @@ export default function ContactForm() {
             {/* Main Heading */}
             <div className="space-y-2">
               <h2 className="md:text-[38px] text-[30px] md:leading-[46px] font-semibold text-[#282828]">
-              We get it. Sometimes you <br className='md:block hidden'/> just need to talk to a <br className='md:block hidden'/> human - reach out to us here.
+                We get it. Sometimes you <br className='md:block hidden' /> just need to talk to a <br className='md:block hidden' /> human - reach out to us here.
               </h2>
             </div>
 
@@ -108,9 +111,8 @@ export default function ContactForm() {
                     {...register('fullName')}
                     type="text"
                     placeholder="Full Name"
-                    className={`w-full px-4 py-3 bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white ${
-                      errors.fullName ? 'ring-2 ring-red-500' : ''
-                    }`}
+                    className={`w-full px-4 py-3 bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white ${errors.fullName ? 'ring-2 ring-red-500' : ''
+                      }`}
                   />
                   {errors.fullName && (
                     <p className="text-red-500 text-sm mt-1">{errors.fullName.message}</p>
@@ -121,9 +123,8 @@ export default function ContactForm() {
                     {...register('position')}
                     type="text"
                     placeholder="Position / Title"
-                    className={`w-full px-4 py-3 bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white ${
-                      errors.position ? 'ring-2 ring-red-500' : ''
-                    }`}
+                    className={`w-full px-4 py-3 bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white ${errors.position ? 'ring-2 ring-red-500' : ''
+                      }`}
                   />
                   {errors.position && (
                     <p className="text-red-500 text-sm mt-1">{errors.position.message}</p>
@@ -138,9 +139,8 @@ export default function ContactForm() {
                     {...register('email')}
                     type="email"
                     placeholder="Email Address"
-                    className={`w-full px-4 py-3 bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white ${
-                      errors.email ? 'ring-2 ring-red-500' : ''
-                    }`}
+                    className={`w-full px-4 py-3 bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white ${errors.email ? 'ring-2 ring-red-500' : ''
+                      }`}
                   />
                   {errors.email && (
                     <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
@@ -156,13 +156,13 @@ export default function ContactForm() {
                     maxLength={17}
                     onKeyPress={(e) => {
                       // Allow only numbers and backspace
-                      if (!/[0-9]/.test(e.key) && e.key !== 'Backspace') {
+                      if (!/[0-9]/.test(e.key) && e.key !== 'Backspace')
+                      {
                         e.preventDefault();
                       }
                     }}
-                    className={`w-full px-4 py-3 bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white ${
-                      errors.phone ? 'ring-2 ring-red-500' : ''
-                    }`}
+                    className={`w-full px-4 py-3 bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white ${errors.phone ? 'ring-2 ring-red-500' : ''
+                      }`}
                   />
                   {errors.phone && (
                     <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
@@ -176,9 +176,8 @@ export default function ContactForm() {
                   {...register('question')}
                   placeholder="Question"
                   rows={5}
-                  className={`w-full px-4 py-3 bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white resize-none ${
-                    errors.question ? 'ring-2 ring-red-500' : ''
-                  }`}
+                  className={`w-full px-4 py-3 bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-gray-800 placeholder-[#11101066] transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white resize-none ${errors.question ? 'ring-2 ring-red-500' : ''
+                    }`}
                 />
                 {errors.question && (
                   <p className="text-red-500 text-sm mt-1">{errors.question.message}</p>

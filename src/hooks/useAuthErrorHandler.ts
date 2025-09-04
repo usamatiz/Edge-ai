@@ -52,6 +52,13 @@ export function useAuthErrorHandler() {
           }
         }
         
+        // Check for network errors (status 0 or failed fetch)
+        if (response.status === 0 || !response.ok) {
+          console.log('🔐 Auth Error Handler: Network error detected, not clearing user data')
+          // Don't clear user data on network errors - might be temporary
+          return response
+        }
+        
         return response
       } catch (error) {
         console.error('Fetch interceptor error:', error)

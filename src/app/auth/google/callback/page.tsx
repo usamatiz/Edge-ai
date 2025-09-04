@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { validateAndHandleToken } from '@/lib/jwt-client';
+import { apiService } from '@/lib/api-service';
 
 function GoogleCallbackContent() {
   const router = useRouter();
@@ -15,7 +16,8 @@ function GoogleCallbackContent() {
       const code = searchParams.get('code');
       const error = searchParams.get('error');
 
-      if (error) {
+      if (error)
+      {
         setStatus('error');
         setMessage('Google authentication was cancelled or failed.');
         setTimeout(() => {
@@ -24,7 +26,8 @@ function GoogleCallbackContent() {
         return;
       }
 
-      if (!code) {
+      if (!code)
+      {
         setStatus('error');
         setMessage('No authorization code received from Google.');
         setTimeout(() => {
@@ -33,7 +36,8 @@ function GoogleCallbackContent() {
         return;
       }
 
-      try {
+      try
+      {
         // Exchange code for access token
         const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
           method: 'POST',
@@ -49,7 +53,8 @@ function GoogleCallbackContent() {
           }),
         });
 
-        if (!tokenResponse.ok) {
+        if (!tokenResponse.ok)
+        {
           throw new Error('Failed to exchange code for token');
         }
 
@@ -62,32 +67,27 @@ function GoogleCallbackContent() {
           },
         });
 
-        if (!userInfoResponse.ok) {
+        if (!userInfoResponse.ok)
+        {
           throw new Error('Failed to get user info from Google');
         }
 
         const userInfo = await userInfoResponse.json();
 
-        // Call your backend API
-        const response = await fetch('/api/auth/google', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            googleId: userInfo.id,
-            email: userInfo.email,
-            firstName: userInfo.given_name,
-            lastName: userInfo.family_name,
-          }),
+        // Call your backend API using apiService
+        const data = await apiService.googleLogin({
+          googleId: userInfo.id,
+          email: userInfo.email,
+          firstName: userInfo.given_name,
+          lastName: userInfo.family_name,
         });
 
-        const data = await response.json();
-
-        if (data.success) {
+        if (data.success && data.data)
+        {
           // Validate JWT token before storing
           const accessToken = data.data.accessToken;
-          if (!validateAndHandleToken(accessToken)) {
+          if (!validateAndHandleToken(accessToken))
+          {
             setStatus('error');
             setMessage('Invalid token received. Please try again.');
             setTimeout(() => {
@@ -95,24 +95,26 @@ function GoogleCallbackContent() {
             }, 3000);
             return;
           }
-          
+
           // Store the access token
           localStorage.setItem('accessToken', accessToken);
           setStatus('success');
           setMessage('Google authentication successful! Redirecting...');
-          
+
           // Redirect to home page
           setTimeout(() => {
             router.push('/');
           }, 2000);
-        } else {
+        } else
+        {
           setStatus('error');
           setMessage(data.message || 'Google login failed.');
           setTimeout(() => {
             router.push('/');
           }, 3000);
         }
-      } catch (error) {
+      } catch (error)
+      {
         console.error('Google callback error:', error);
         setStatus('error');
         setMessage('An error occurred during Google authentication.');
@@ -133,7 +135,7 @@ function GoogleCallbackContent() {
             Google Authentication
           </h2>
         </div>
-        
+
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           {status === 'loading' && (
             <div className="text-center">
@@ -186,7 +188,7 @@ function LoadingFallback() {
             Google Authentication
           </h2>
         </div>
-        
+
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>

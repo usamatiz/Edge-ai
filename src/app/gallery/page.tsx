@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
-import VideoGallery from '@/components/ui/video-gallery'
 import { useRouter } from 'next/navigation'
 
 export default function GalleryPage() {
@@ -13,14 +12,16 @@ export default function GalleryPage() {
 
   useEffect(() => {
     // Check if user is authenticated
-    if (!user) {
+    if (!user)
+    {
       router.push('/auth/login')
       return
     }
     setIsLoading(false)
   }, [user, router])
 
-  if (isLoading) {
+  if (isLoading)
+  {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -29,7 +30,8 @@ export default function GalleryPage() {
     )
   }
 
-  if (!user) {
+  if (!user)
+  {
     return null // Will redirect to login
   }
 
