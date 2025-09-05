@@ -275,9 +275,9 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
             type="button"
             onClick={onUpdateProfile}
             disabled={isUpdating}
-            className={`px-8 py-3 rounded-lg font-medium text-white transition-colors duration-200 ${isUpdating
+              className={`px-4 py-[11.4px] rounded-full font-semibold text-[14px] hover:text-[#5046E5] text-white transition-colors duration-200 ${isUpdating
               ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-[#5046E5] hover:bg-[#4338CA]'
+              : 'hover:bg-transparent bg-[#5046E5] border border-[#5046E5]'
               }`}
           >
             {isUpdating ? (
@@ -286,7 +286,7 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
                 Updating...
               </div>
             ) : (
-              'Update Profile'
+              'Update Detail'
             )}
           </button>
         </div>

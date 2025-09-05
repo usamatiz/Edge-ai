@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, Receipt, AlertCircle } from 'lucide-react'
 import { apiService, BillingTransaction } from '@/lib/api-service'
+import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 
 interface BillingHistoryModalProps {
     isOpen: boolean
@@ -10,6 +11,9 @@ interface BillingHistoryModalProps {
 }
 
 export default function BillingHistoryModal({ isOpen, onClose }: BillingHistoryModalProps) {
+    // Use the custom scroll lock hook
+    useModalScrollLock(isOpen)
+    
     const [billingHistory, setBillingHistory] = useState<BillingTransaction[]>([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -20,6 +24,23 @@ export default function BillingHistoryModal({ isOpen, onClose }: BillingHistoryM
             fetchBillingHistory()
         }
     }, [isOpen])
+
+    // Handle ESC key to close modal
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isOpen) {
+                onClose()
+            }
+        }
+
+        if (isOpen) {
+            document.addEventListener('keydown', handleKeyDown)
+        }
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown)
+        }
+    }, [isOpen, onClose])
 
     const fetchBillingHistory = async () => {
         try
@@ -87,7 +108,7 @@ export default function BillingHistoryModal({ isOpen, onClose }: BillingHistoryM
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
                 {/* Modal Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-200">

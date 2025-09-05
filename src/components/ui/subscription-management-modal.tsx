@@ -5,6 +5,7 @@ import { X, AlertCircle, CheckCircle, CreditCard, AlertTriangle } from 'lucide-r
 import { apiService, SubscriptionData } from '@/lib/api-service'
 import { useNotificationStore } from './global-notification'
 import LoadingButton from './loading-button'
+import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 
 interface SubscriptionManagementModalProps {
     isOpen: boolean
@@ -26,6 +27,9 @@ export default function SubscriptionManagementModal({
     currentSubscription,
     onSubscriptionUpdated
 }: SubscriptionManagementModalProps) {
+    // Use the custom scroll lock hook
+    useModalScrollLock(isOpen)
+    
     const [plans, setPlans] = useState<Plan[]>([])
     const [plansLoading, setPlansLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -71,6 +75,23 @@ export default function SubscriptionManagementModal({
             }
         }
     }, [isOpen, currentSubscription, fetchPlans])
+
+    // Handle ESC key to close modal
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isOpen) {
+                onClose()
+            }
+        }
+
+        if (isOpen) {
+            document.addEventListener('keydown', handleKeyDown)
+        }
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown)
+        }
+    }, [isOpen, onClose])
 
     const handleChangePlan = async () => {
         if (!selectedPlan || selectedPlan === currentSubscription?.planId)
@@ -184,7 +205,7 @@ export default function SubscriptionManagementModal({
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
                 {/* Modal Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-200">
