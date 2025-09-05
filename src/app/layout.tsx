@@ -6,6 +6,7 @@ import ClientProviders from "@/components/providers/ClientProviders";
 import "./globals.css";
 import { Footer, AuthLoader } from "@/components/ui";
 import GlobalNotification from "@/components/ui/global-notification";
+import GlobalLoadingOverlay from "@/components/ui/global-loading-overlay";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -32,6 +33,14 @@ export const metadata: Metadata = {
   description: "Transform your real estate business with cutting-edge AI technology. Discover properties, analyze markets, and make smarter decisions.",
   keywords: ["real estate", "AI", "property", "market analysis", "EdgeAi"],
   authors: [{ name: "EdgeAi Realty" }],
+  icons: {
+    icon: [
+      { url: '/favicon.png', type: 'image/png' },
+      { url: '/favicon.ico', type: 'image/x-icon' }
+    ],
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
+  },
   openGraph: {
     title: "EdgeAi Realty - AI-Powered Real Estate Solutions",
     description: "Transform your real estate business with cutting-edge AI technology.",
@@ -64,7 +73,7 @@ export default function RootLayout({
             </main>
             <Footer />
             <GlobalNotification />
-
+            <GlobalLoadingOverlay />
           </AuthLoader>
         </ClientProviders>
       </body>

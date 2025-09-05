@@ -82,8 +82,8 @@ export default function PreviousVideosGallery({ className }: PreviousVideosGalle
       }
     } catch (err: any)
     {
-      console.error('Error fetching videos:', err)
-      setError(err.message || 'Failed to fetch videos')
+      const errorMessage = err.message || 'Failed to fetch videos'
+      setError(errorMessage)
     } finally
     {
       setLoading(false)
@@ -96,22 +96,13 @@ export default function PreviousVideosGallery({ className }: PreviousVideosGalle
   }, [accessToken])
 
   const handleViewVideo = (video: VideoCard) => {
-    console.log('Video data for viewing:', {
-      status: video.status,
-      downloadUrl: video.downloadUrl,
-      title: video.title,
-      videoId: video.videoId
-    })
-
     if (video.status !== 'ready')
     {
-      console.log('Video not ready for viewing - status:', video.status)
       return
     }
 
     if (!video.downloadUrl)
     {
-      console.log('Video not ready for viewing - no download URL')
       return
     }
 

@@ -66,7 +66,8 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
       }
     } catch (error)
     {
-      console.error('Failed to refresh user data:', error)
+      // Silently fail - this is a background refresh
+      // User will see updated status on next manual action
     }
   }
 
@@ -101,8 +102,8 @@ export default function ProfileInfoSection({ data, errors, onChange, isEmailVeri
       }
     } catch (error)
     {
-      console.error('Error sending verification email:', error)
-      showToastMessage('Something went wrong. Please try again.', 'error')
+      const errorMessage = error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+      showToastMessage(errorMessage, 'error')
     }
   }
 

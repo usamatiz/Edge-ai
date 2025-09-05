@@ -1,5 +1,5 @@
 import { getApiUrl, getAuthHeaders, getAuthenticatedHeaders, API_CONFIG } from './config';
-
+import { toast } from 'sonner';
 // API Response Types
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -19,6 +19,7 @@ export interface RegisterData {
   password: string;
   firstName: string;
   lastName: string;
+  phone?: string;
 }
 
 export interface UserData {
@@ -146,6 +147,19 @@ export interface BillingHistoryResponse {
 
 // API Service Class
 class ApiService {
+  // Global loading state management
+  private globalLoadingCallback: ((loading: boolean, message?: string) => void) | null = null;
+
+  setGlobalLoadingCallback(callback: (loading: boolean, message?: string) => void) {
+    this.globalLoadingCallback = callback;
+  }
+
+  private setGlobalLoading(loading: boolean, message?: string) {
+    if (this.globalLoadingCallback) {
+      this.globalLoadingCallback(loading, message);
+    }
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
@@ -176,7 +190,8 @@ class ApiService {
 
       return data;
     } catch (error) {
-      console.error('API request failed:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(`API request failed: ${errorMessage}`);
       throw error;
     }
   }
@@ -438,6 +453,67 @@ class ApiService {
     return this.request<any>(API_CONFIG.ENDPOINTS.SUBSCRIPTION.CANCEL, {
       method: 'POST',
     }, true, true);
+  }
+
+  // Critical operations that should use global loading
+  async registerWithGlobalLoading(userData: RegisterData): Promise<ApiResponse<AuthResponse>> {
+    this.setGlobalLoading(true, 'Creating your account...');
+    try {
+      const result = await this.register(userData);
+      return result;
+    } finally {
+      this.setGlobalLoading(false);
+    }
+  }
+
+  async loginWithGlobalLoading(loginData: LoginData): Promise<ApiResponse<AuthResponse>> {
+    this.setGlobalLoading(true, 'Signing you in...');
+    try {
+      const result = await this.login(loginData);
+      return result;
+    } finally {
+      this.setGlobalLoading(false);
+    }
+  }
+
+  async resetPasswordWithGlobalLoading(token: string, password: string): Promise<ApiResponse> {
+    this.setGlobalLoading(true, 'Resetting your password...');
+    try {
+      const result = await this.resetPassword(token, password);
+      return result;
+    } finally {
+      this.setGlobalLoading(false);
+    }
+  }
+
+  async createPaymentIntentWithGlobalLoading(planId: string): Promise<ApiResponse<PaymentIntentResponse>> {
+    this.setGlobalLoading(true, 'Preparing payment...');
+    try {
+      const result = await this.createPaymentIntent(planId);
+      return result;
+    } finally {
+      this.setGlobalLoading(false);
+    }
+  }
+
+  async changeSubscriptionPlanWithGlobalLoading(newPlanId: string): Promise<ApiResponse<any>> {
+    this.setGlobalLoading(true, 'Updating your subscription...');
+    try {
+      const result = await this.changeSubscriptionPlan(newPlanId);
+      return result;
+    } finally {
+      this.setGlobalLoading(false);
+    }
+  }
+
+  async cancelSubscriptionWithGlobalLoading(): Promise<ApiResponse<any>> {
+    this.setGlobalLoading(true, 'Cancelling your subscription...');
+    try {
+      const result = await this.cancelSubscription();
+      return result;
+    } finally {
+      this.setGlobalLoading(false);
+    }
   }
 }
 

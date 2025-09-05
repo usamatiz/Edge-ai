@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Download, Trash2, Play, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import { apiService } from '@/lib/api-service'
 
+
 interface Video {
   videoId: string
   title: string
@@ -39,10 +40,14 @@ export default function VideoGallery({ userId, className }: VideoGalleryProps) {
 
       const result = await apiService.getVideoGallery()
 
+      console.log('result', result)
+
       if (!result.success || !result.data)
       {
         throw new Error(result.message || 'Failed to fetch videos')
       }
+
+      console.log('result.data.videos', result.data.videos)
 
       setVideos(result.data.videos)
     } catch (err: any)

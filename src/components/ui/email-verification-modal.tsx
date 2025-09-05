@@ -1,8 +1,9 @@
 'use client'
 
 import { useRef, useEffect, useCallback } from 'react'
-import { CheckCircle, Mail, AlertCircle } from 'lucide-react'
+import { CheckCircle, Mail } from 'lucide-react'
 import Link from 'next/link'
+import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 
 interface EmailVerificationModalProps {
   isOpen: boolean
@@ -11,6 +12,9 @@ interface EmailVerificationModalProps {
 }
 
 export default function EmailVerificationModal({ isOpen, onClose, email }: EmailVerificationModalProps) {
+  // Use the custom scroll lock hook
+  useModalScrollLock(isOpen)
+  
   // Refs for focus management
   const modalRef = useRef<HTMLDivElement>(null)
 
@@ -21,10 +25,6 @@ export default function EmailVerificationModal({ isOpen, onClose, email }: Email
   // Focus management and accessibility
   useEffect(() => {
     if (isOpen) {
-      // Prevent body scroll when modal is open
-      const originalStyle = window.getComputedStyle(document.body).overflow
-      document.body.style.overflow = 'hidden'
-      
       // Trap focus within modal
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
@@ -55,8 +55,6 @@ export default function EmailVerificationModal({ isOpen, onClose, email }: Email
       document.addEventListener('keydown', handleKeyDown)
       return () => {
         document.removeEventListener('keydown', handleKeyDown)
-        // Restore body scroll when modal closes
-        document.body.style.overflow = originalStyle
       }
     }
   }, [isOpen, handleClose])

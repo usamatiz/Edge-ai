@@ -194,7 +194,6 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
 
       // Extract webhook response data
       const webhookData = result.data.webhookResponse;
-      console.log('Raw webhook response data:', webhookData);
 
       // Use the original form data for fields that weren't returned by webhook
       const decodedResponse = {
@@ -207,7 +206,6 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
         avatar: webhookData?.avatar || data.avatar,
         email: webhookData?.email || data.email
       }
-      console.log('Setting webhook response:', decodedResponse);
       setWebhookResponse(decodedResponse)
 
       // Create video request object for Redux

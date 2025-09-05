@@ -8,6 +8,7 @@ import { apiService } from '@/lib/api-service';
 import { useNotificationStore } from './global-notification';
 import { PricingPlan } from './pricing-section';
 
+
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -28,19 +29,10 @@ export default function PaymentModal({ isOpen, onClose, plan, onSuccess }: Payme
 
     setIsLoading(true);
     try {
-      console.log('🔐 Creating payment intent with CSRF protection for plan:', plan.id);
-      const response = await apiService.createPaymentIntent(plan.id);
-      
-      console.log('🔍 PaymentModal - Full response:', response);
-      console.log('🔍 PaymentModal - Response success:', response.success);
-      console.log('🔍 PaymentModal - Response data:', response.data);
-      console.log('🔍 PaymentModal - Payment intent:', response.data?.paymentIntent);
-      console.log('🔍 PaymentModal - Client secret exists:', !!response.data?.paymentIntent?.client_secret);
-      console.log('🔍 PaymentModal - Client secret value:', response.data?.paymentIntent?.client_secret);
+      const response = await apiService.createPaymentIntentWithGlobalLoading(plan.id);
       
       if (response.success && response.data?.paymentIntent?.client_secret) {
         setClientSecret(response.data.paymentIntent.client_secret);
-        console.log('✅ Payment intent created with client secret');
       } else {
         // Check if user already has an active subscription
         if (response.message?.toLowerCase().includes('active subscription')) {
@@ -49,17 +41,12 @@ export default function PaymentModal({ isOpen, onClose, plan, onSuccess }: Payme
           return;
         }
         
-        console.error('❌ PaymentModal - Missing clientSecret in response:', {
-          success: response.success,
-          data: response.data,
-          hasPaymentIntent: !!response.data?.paymentIntent,
-          hasClientSecret: !!response.data?.paymentIntent?.client_secret
-        });
-        showNotification('Failed to initialize payment. Please try again.', 'error');
+        // Show API response error message or fallback
+        const errorMessage = response.message || 'Failed to initialize payment. Please try again.';
+        showNotification(errorMessage, 'error');
         onClose();
       }
     } catch (error: any) {
-      console.error('Payment intent creation error:', error);
       
       // Check if error is about active subscription
       const errorMessage = error.message || '';
@@ -90,7 +77,7 @@ export default function PaymentModal({ isOpen, onClose, plan, onSuccess }: Payme
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">

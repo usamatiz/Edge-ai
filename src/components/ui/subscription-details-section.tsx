@@ -34,8 +34,8 @@ export default function SubscriptionDetailsSection({ className = '' }: Subscript
                 }
             } catch (err)
             {
-                console.error('Error fetching subscription:', err)
-                setError('Failed to load subscription details')
+                const errorMessage = err instanceof Error ? err.message : 'Failed to load subscription details'
+                setError(errorMessage)
             } finally
             {
                 setLoading(false)
@@ -79,7 +79,6 @@ export default function SubscriptionDetailsSection({ className = '' }: Subscript
                         setSubscription(subscriptionData)
                     } else
                     {
-                        console.error('Invalid subscription data received:', subscriptionData)
                         setError('Invalid subscription data received')
                     }
                 } else
@@ -88,8 +87,8 @@ export default function SubscriptionDetailsSection({ className = '' }: Subscript
                 }
             } catch (err)
             {
-                console.error('Error fetching subscription:', err)
-                setError('Failed to load subscription details')
+                const errorMessage = err instanceof Error ? err.message : 'Failed to load subscription details'
+                setError(errorMessage)
             } finally
             {
                 setLoading(false)

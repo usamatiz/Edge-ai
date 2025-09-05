@@ -77,7 +77,7 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
       } catch (error)
       {
         // Log error but don't prevent logout from proceeding
-        console.error('Logout API call failed:', error)
+        // API logout failed, but we'll still clear local data
       }
 
       // Clear user data from Redux store
@@ -87,7 +87,6 @@ export default function ProfileDropdown({ isMobile = false, onClose }: ProfileDr
       router.push('/')
     } catch (error)
     {
-      console.error('Logout error:', error)
       // Even if API call fails, clear local data
       dispatch(clearUser())
       router.push('/')

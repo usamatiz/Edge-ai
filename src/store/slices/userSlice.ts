@@ -19,6 +19,9 @@ interface UserState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  // Global loading states
+  globalLoading: boolean;
+  globalLoadingMessage: string;
 }
 
 const initialState: UserState = {
@@ -28,6 +31,9 @@ const initialState: UserState = {
   isAuthenticated: false,
   isLoading: true, // Start with loading true to prevent flickering
   error: null,
+  // Global loading states
+  globalLoading: false,
+  globalLoadingMessage: '',
 };
 
 const userSlice = createSlice({
@@ -85,6 +91,17 @@ const userSlice = createSlice({
       state.error = null;
     },
     
+    // Global loading actions
+    setGlobalLoading: (state: UserState, action: PayloadAction<{ loading: boolean; message?: string }>) => {
+      state.globalLoading = action.payload.loading;
+      state.globalLoadingMessage = action.payload.message || '';
+    },
+    
+    clearGlobalLoading: (state: UserState) => {
+      state.globalLoading = false;
+      state.globalLoadingMessage = '';
+    },
+    
     checkTokenExpiry: (state: UserState) => {
       // console.log('🔐 Redux: checkTokenExpiry action called')
       // Check localStorage first (for page refresh scenarios)
@@ -135,6 +152,8 @@ export const {
   setLoading, 
   setError, 
   clearError,
+  setGlobalLoading,
+  clearGlobalLoading,
   checkTokenExpiry
 } = userSlice.actions;
 

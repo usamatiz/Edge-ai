@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { AlertCircle, CheckCircle } from 'lucide-react'
 import { apiService } from '@/lib/api-service'
+import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 
 
 interface ForgotPasswordModalProps {
@@ -21,6 +22,9 @@ interface FormErrors {
 }
 
 export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: ForgotPasswordModalProps) {
+  // Use the custom scroll lock hook
+  useModalScrollLock(isOpen)
+  
   const [formData, setFormData] = useState<FormData>({
     email: ''
   })
@@ -184,10 +188,6 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
   useEffect(() => {
     if (isOpen)
     {
-      // Prevent body scroll when modal is open
-      const originalStyle = window.getComputedStyle(document.body).overflow
-      document.body.style.overflow = 'hidden'
-
       // Focus first input when modal opens
       setTimeout(() => {
         firstInputRef.current?.focus()
@@ -229,8 +229,6 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
       document.addEventListener('keydown', handleKeyDown)
       return () => {
         document.removeEventListener('keydown', handleKeyDown)
-        // Restore body scroll when modal closes
-        document.body.style.overflow = originalStyle
       }
     }
   }, [isOpen, handleClose])

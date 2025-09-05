@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { X, AlertCircle, CheckCircle, CreditCard, AlertTriangle } from 'lucide-react'
 import { apiService, SubscriptionData } from '@/lib/api-service'
 import { useNotificationStore } from './global-notification'
+import LoadingButton from './loading-button'
 
 interface SubscriptionManagementModalProps {
     isOpen: boolean
@@ -51,8 +52,7 @@ export default function SubscriptionManagementModal({
             }
         } catch (err)
         {
-            const errorMsg = 'Failed to load subscription plans'
-            console.error('Error fetching plans:', err)
+            const errorMsg = err instanceof Error ? err.message : 'Failed to load subscription plans'
             setError(errorMsg)
             showNotification(errorMsg, 'error')
         } finally
@@ -82,13 +82,13 @@ export default function SubscriptionManagementModal({
         {
             setActionLoading(true)
             setError(null)
-            const response = await apiService.changeSubscriptionPlan(selectedPlan)
+            const response = await apiService.changeSubscriptionPlanWithGlobalLoading(selectedPlan)
 
             if (response.success)
             {
                 // Show success message
                 setError(null)
-                showNotification('Subscription plan updated successfully!', 'success')
+                showNotification(`Subscription plan updated successfully!`, 'success')
                 // Call the callback to refresh subscription data
                 if (onSubscriptionUpdated && typeof onSubscriptionUpdated === 'function')
                 {
@@ -97,23 +97,22 @@ export default function SubscriptionManagementModal({
                         onSubscriptionUpdated()
                     } catch (callbackError)
                     {
-                        console.error('Error in subscription update callback:', callbackError)
-                        showNotification('Plan updated but failed to refresh data', 'warning')
+                        const errorMsg = callbackError instanceof Error ? callbackError.message : 'Plan updated but failed to refresh data'
+                        showNotification(`${errorMsg}`, 'warning')
                     }
                 }
                 onClose()
             } else
             {
                 const errorMsg = response.message || 'Failed to change subscription plan'
+                showNotification(`${errorMsg}`, 'error')
                 setError(errorMsg)
-                showNotification(errorMsg, 'error')
             }
         } catch (err)
         {
-            const errorMsg = 'Failed to change subscription plan'
-            console.error('Error changing plan:', err)
+            const errorMsg = err instanceof Error ? err.message : 'Failed to change subscription plan'
+            showNotification(`${errorMsg}`, 'error')
             setError(errorMsg)
-            showNotification(errorMsg, 'error')
         } finally
         {
             setActionLoading(false)
@@ -125,7 +124,7 @@ export default function SubscriptionManagementModal({
         {
             setActionLoading(true)
             setError(null)
-            const response = await apiService.cancelSubscription()
+            const response = await apiService.cancelSubscriptionWithGlobalLoading()
 
             if (response.success)
             {
@@ -139,8 +138,8 @@ export default function SubscriptionManagementModal({
                         onSubscriptionUpdated()
                     } catch (callbackError)
                     {
-                        console.error('Error in subscription update callback:', callbackError)
-                        showNotification('Subscription cancelled but failed to refresh data', 'warning')
+                        const errorMessage = callbackError instanceof Error ? callbackError.message : 'Failed to refresh data'
+                        showNotification(`Subscription cancelled but ${errorMessage}`, 'warning')
                     }
                 }
                 onClose()
@@ -152,10 +151,9 @@ export default function SubscriptionManagementModal({
             }
         } catch (err)
         {
-            const errorMsg = 'Failed to cancel subscription'
-            console.error('Error cancelling subscription:', err)
+            const errorMsg = err instanceof Error ? err.message : 'Failed to cancel subscription'
+            showNotification(`${errorMsg}`, 'error')
             setError(errorMsg)
-            showNotification(errorMsg, 'error')
         } finally
         {
             setActionLoading(false)
@@ -264,20 +262,18 @@ export default function SubscriptionManagementModal({
                             </div>
                         )}
 
-                        <button
+                        <LoadingButton
                             onClick={handleChangePlan}
+                            loading={actionLoading}
                             disabled={actionLoading || !selectedPlan || selectedPlan === currentSubscription?.planId}
-                            className="w-full bg-[#5046E5] text-white py-3 px-6 rounded-lg font-medium hover:bg-[#4338CA] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            loadingText="Updating Plan..."
+                            variant="primary"
+                            size="md"
+                            fullWidth
+                            className="py-3 px-6 rounded-lg"
                         >
-                            {actionLoading ? (
-                                <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                    Updating Plan...
-                                </>
-                            ) : (
-                                'Update Plan'
-                            )}
-                        </button>
+                            Update Plan
+                        </LoadingButton>
                     </div>
 
                     {/* Cancel Subscription Section */}
@@ -320,20 +316,17 @@ export default function SubscriptionManagementModal({
                                     </div>
                                 </div>
                                 <div className="flex gap-3">
-                                    <button
+                                    <LoadingButton
                                         onClick={handleCancelSubscription}
+                                        loading={actionLoading}
                                         disabled={actionLoading}
-                                        className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                        loadingText="Cancelling..."
+                                        variant="danger"
+                                        size="sm"
+                                        className="px-4 py-2 rounded-lg"
                                     >
-                                        {actionLoading ? (
-                                            <>
-                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                                Cancelling...
-                                            </>
-                                        ) : (
-                                            'Yes, Cancel Subscription'
-                                        )}
-                                    </button>
+                                        Yes, Cancel Subscription
+                                    </LoadingButton>
                                     <button
                                         onClick={() => setShowCancelConfirm(false)}
                                         disabled={actionLoading}

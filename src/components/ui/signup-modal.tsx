@@ -8,6 +8,8 @@ import { useAppDispatch } from '@/store/hooks'
 import { setUser } from '@/store/slices/userSlice'
 import { validateAndHandleToken } from '@/lib/jwt-client'
 import { apiService } from '@/lib/api-service'
+import LoadingButton from './loading-button'
+import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 
 // Google OAuth TypeScript declarations
 declare global {
@@ -63,6 +65,9 @@ interface PasswordStrength {
 
 export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrationSuccess }: SignupModalProps) {
   const dispatch = useAppDispatch()
+  
+  // Use the custom scroll lock hook
+  useModalScrollLock(isOpen)
 
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
@@ -85,7 +90,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>({ score: 0, feedback: [] })
-  const [rememberForm, setRememberForm] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
 
   // Toast state
   const [showToast, setShowToast] = useState(false)
@@ -109,7 +114,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
   // Phone number is now optional and accepts any format
 
   // Simple input sanitization
-  const enhancedSanitizeInput = (value: string, type: 'text' | 'email' | 'phone' | 'name' = 'text'): string => {
+  const enhancedSanitizeInput = (value: string): string => {
     return value.trim();
   }
 
@@ -157,19 +162,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
     let processedValue = value
 
     // Apply field-specific processing with enhanced security
-    if (field === 'phone')
-    {
-      processedValue = enhancedSanitizeInput(value, 'phone')
-    } else if (field === 'email')
-    {
-      processedValue = enhancedSanitizeInput(value, 'email')
-    } else if (field === 'firstName' || field === 'lastName')
-    {
-      processedValue = enhancedSanitizeInput(value, 'name')
-    } else
-    {
-      processedValue = enhancedSanitizeInput(value, 'text')
-    }
+    processedValue = enhancedSanitizeInput(value)
 
     setFormData(prev => ({
       ...prev,
@@ -311,11 +304,12 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
 
     try
     {
-      // Call the registration API using new Express backend
-      const response = await apiService.register({
+      // Call the registration API using new Express backend with global loading
+      const response = await apiService.registerWithGlobalLoading({
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
+        phone: formData.phone,
         password: formData.password
       })
 
@@ -359,8 +353,8 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
 
     } catch (error)
     {
-      console.error('Registration error:', error)
-      showToastMessage('Network error. Please check your connection and try again.', 'error')
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      showToastMessage(`${errorMessage}`, 'error')
     } finally
     {
       setIsSubmitting(false)
@@ -368,6 +362,8 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
   }
 
   const handleGoogleSignup = async () => {
+    setIsGoogleLoading(true)
+    
     try
     {
       // Initialize Google OAuth
@@ -378,17 +374,38 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
           client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
           scope: 'openid email profile',
           callback: async (response: { access_token?: string; error?: string }) => {
-            if (response.access_token)
-            {
-              await handleGoogleToken(response.access_token)
-            } else
-            {
-              showToastMessage('Google authentication failed. Please try again.', 'error')
+            try {
+              if (response.access_token)
+              {
+                await handleGoogleToken(response.access_token)
+              } else if (response.error)
+              {
+                showToastMessage(`Google authentication failed: ${response.error}`, 'error')
+              } else
+              {
+                showToastMessage('Google authentication was cancelled', 'error')
+              }
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : String(error)
+              showToastMessage(`Google signup error: ${errorMessage}`, 'error')
+            } finally {
+              // Only reset loading state if handleGoogleToken wasn't called
+              if (!response.access_token) {
+                setIsGoogleLoading(false)
+              }
             }
           },
         })
 
         client.requestAccessToken()
+        
+        // Set a timeout to reset loading state if callback doesn't fire
+        setTimeout(() => {
+          if (isGoogleLoading) {
+            setIsGoogleLoading(false)
+            showToastMessage('Google authentication timed out. Please try again.', 'error')
+          }
+        }, 30000) // 30 second timeout
       } else
       {
         // Fallback to traditional OAuth flow
@@ -403,8 +420,9 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
       }
     } catch (error)
     {
-      console.error('Google signup error:', error)
-      showToastMessage('Google authentication failed. Please try again.', 'error')
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      showToastMessage(`Google signup error: ${errorMessage}`, 'error')
+      setIsGoogleLoading(false)
     }
   }
 
@@ -500,8 +518,12 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
       }
     } catch (error)
     {
-      console.error('Google token handling error:', error)
-      showToastMessage('Failed to complete Google authentication. Please try again.', 'error')
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      showToastMessage(`Google token handling error: ${errorMessage}`, 'error')
+    } finally
+    {
+      // Always reset loading state
+      setIsGoogleLoading(false)
     }
   }
 
@@ -525,7 +547,6 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
     setShowSuccess(false)
     setIsSubmitting(false)
     setPasswordStrength({ score: 0, feedback: [] })
-    setRememberForm(false)
     setShowToast(false)
     setToastMessage('')
     setToastType('success')
@@ -554,7 +575,6 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
     setShowSuccess(false)
     setIsSubmitting(false)
     setPasswordStrength({ score: 0, feedback: [] })
-    setRememberForm(false)
     // Don't clear toast - let it stay visible
     setShowPassword(false)
     setShowConfirmPassword(false)
@@ -565,10 +585,6 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
   useEffect(() => {
     if (isOpen)
     {
-      // Prevent body scroll when modal is open
-      const originalStyle = window.getComputedStyle(document.body).overflow
-      document.body.style.overflow = 'hidden'
-
       // Focus first input when modal opens
       setTimeout(() => {
         firstInputRef.current?.focus()
@@ -610,8 +626,6 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
       document.addEventListener('keydown', handleKeyDown)
       return () => {
         document.removeEventListener('keydown', handleKeyDown)
-        // Restore body scroll when modal closes
-        document.body.style.overflow = originalStyle
       }
     }
   }, [isOpen, handleClose])
@@ -656,7 +670,8 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
           setFormData(prev => ({ ...prev, ...parsedData }))
         } catch (error)
         {
-          console.error('Error loading saved form data:', error)
+          const errorMessage = error instanceof Error ? error.message : String(error)
+          showToastMessage(`${errorMessage}`, 'error')
         }
       }
     }
@@ -955,52 +970,49 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
               </div>
 
               {/* Sign Up Button */}
-              <button
+              <LoadingButton
                 type="submit"
+                loading={isSubmitting}
                 disabled={isSubmitting}
-                className={`w-full py-[11.4px] px-6 rounded-full font-semibold text-[20px] border-2 transition-colors duration-300 cursor-pointer mb-6 flex items-center justify-center gap-2 ${isSubmitting
-                  ? 'bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed'
-                  : 'bg-[#5046E5] text-white border-[#5046E5] hover:bg-transparent hover:text-[#5046E5]'
-                  }`}
-                aria-describedby={isSubmitting ? 'submitting-status' : undefined}
+                loadingText="Creating Account..."
+                variant="primary"
+                size="lg"
+                fullWidth
+                className="mb-6 py-[11.4px] px-6 rounded-full text-[20px]"
               >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Creating Account...
-                  </>
-                ) : (
-                  'Sign Up'
-                )}
-              </button>
-
-              {isSubmitting && (
-                <div id="submitting-status" className="sr-only" aria-live="polite">
-                  Creating your account, please wait...
-                </div>
-              )}
+                Sign Up
+              </LoadingButton>
 
               {/* Google Sign Up Button */}
               <button
                 type="button"
                 onClick={handleGoogleSignup}
-                className="w-[220px] mx-auto bg-white text-[#344054] py-[9.2px] px-2 rounded-full font-normal text-[16px] border border-[#D0D5DD] hover:bg-[#D0D5DD] transition-colors duration-300 cursor-pointer flex items-center justify-center gap-x-3"
+                disabled={isGoogleLoading}
+                className={`w-[220px] mx-auto bg-white text-[#344054] py-[9.2px] px-2 rounded-full font-normal text-[16px] border border-[#D0D5DD] hover:bg-[#D0D5DD] transition-colors duration-300 cursor-pointer flex items-center justify-center gap-x-3 ${isGoogleLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <g clipPath="url(#clip0_7697_226)">
-                    <path d="M24.2663 12.2764C24.2663 11.4607 24.2001 10.6406 24.059 9.83807H12.7402V14.4591H19.222C18.953 15.9494 18.0888 17.2678 16.8233 18.1056V21.1039H20.6903C22.9611 19.0139 24.2663 15.9274 24.2663 12.2764Z" fill="#4285F4" />
-                    <path d="M12.7401 24.0008C15.9766 24.0008 18.7059 22.9382 20.6945 21.1039L16.8276 18.1055C15.7517 18.8375 14.3627 19.252 12.7445 19.252C9.61388 19.252 6.95946 17.1399 6.00705 14.3003H2.0166V17.3912C4.05371 21.4434 8.2029 24.0008 12.7401 24.0008Z" fill="#34A853" />
-                    <path d="M6.00277 14.3003C5.50011 12.8099 5.50011 11.1961 6.00277 9.70575V6.61481H2.01674C0.314734 10.0056 0.314734 14.0004 2.01674 17.3912L6.00277 14.3003Z" fill="#FBBC04" />
-                    <path d="M12.7401 4.74966C14.4509 4.7232 16.1044 5.36697 17.3434 6.54867L20.7695 3.12262C18.6001 1.0855 15.7208 -0.034466 12.7401 0.000808666C8.2029 0.000808666 4.05371 2.55822 2.0166 6.61481L6.00264 9.70575C6.95064 6.86173 9.60947 4.74966 12.7401 4.74966Z" fill="#EA4335" />
-                  </g>
-                  <defs>
-                    <clipPath id="clip0_7697_226">
-                      <rect width="24" height="24" fill="white" transform="translate(0.5)" />
-                    </clipPath>
-                  </defs>
-                </svg>
-
-                Sign up with Google
+                {isGoogleLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-gray-300 border-t-[#5046E5] rounded-full animate-spin" />
+                    Signing up...
+                  </>
+                ) : (
+                  <>
+                    <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <g clipPath="url(#clip0_7697_226)">
+                        <path d="M24.2663 12.2764C24.2663 11.4607 24.2001 10.6406 24.059 9.83807H12.7402V14.4591H19.222C18.953 15.9494 18.0888 17.2678 16.8233 18.1056V21.1039H20.6903C22.9611 19.0139 24.2663 15.9274 24.2663 12.2764Z" fill="#4285F4" />
+                        <path d="M12.7401 24.0008C15.9766 24.0008 18.7059 22.9382 20.6945 21.1039L16.8276 18.1055C15.7517 18.8375 14.3627 19.252 12.7445 19.252C9.61388 19.252 6.95946 17.1399 6.00705 14.3003H2.0166V17.3912C4.05371 21.4434 8.2029 24.0008 12.7401 24.0008Z" fill="#34A853" />
+                        <path d="M6.00277 14.3003C5.50011 12.8099 5.50011 11.1961 6.00277 9.70575V6.61481H2.01674C0.314734 10.0056 0.314734 14.0004 2.01674 17.3912L6.00277 14.3003Z" fill="#FBBC04" />
+                        <path d="M12.7401 4.74966C14.4509 4.7232 16.1044 5.36697 17.3434 6.54867L20.7695 3.12262C18.6001 1.0855 15.7208 -0.034466 12.7401 0.000808666C8.2029 0.000808666 4.05371 2.55822 2.0166 6.61481L6.00264 9.70575C6.95064 6.86173 9.60947 4.74966 12.7401 4.74966Z" fill="#EA4335" />
+                      </g>
+                      <defs>
+                        <clipPath id="clip0_7697_226">
+                          <rect width="24" height="24" fill="white" transform="translate(0.5)" />
+                        </clipPath>
+                      </defs>
+                    </svg>
+                    Sign up with Google
+                  </>
+                )}
               </button>
 
               {/* Footer Link */}

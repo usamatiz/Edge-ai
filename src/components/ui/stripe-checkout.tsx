@@ -37,8 +37,6 @@ export default function StripeCheckout({
 
     try
     {
-      console.log('🔐 Processing payment with CSRF protection');
-
       // Confirm the payment
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
@@ -57,8 +55,6 @@ export default function StripeCheckout({
 
       if (paymentIntent?.status === 'succeeded')
       {
-        console.log('✅ Payment succeeded, redirecting to create video page');
-
         // Show success notification
         showNotification('Payment successful! Your subscription is now active.', 'success');
 
@@ -72,8 +68,8 @@ export default function StripeCheckout({
       }
     } catch (error: any)
     {
-      console.error('Payment error:', error);
-      showNotification(error.message || 'Payment failed. Please try again.', 'error');
+      const errorMessage = error.message || 'Payment failed. Please try again.';
+      showNotification(errorMessage, 'error');
     } finally
     {
       setIsProcessing(false);

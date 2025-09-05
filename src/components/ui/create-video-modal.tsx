@@ -7,6 +7,7 @@ import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
 import { useRouter } from 'next/navigation'
 import { apiService } from '@/lib/api-service'
+import { API_CONFIG } from '@/lib/config'
 
 interface CreateVideoModalProps {
   isOpen: boolean
@@ -233,7 +234,7 @@ export default function CreateVideoModal({ isOpen, onClose, startAtComplete = fa
       {
         throw new Error('No video URL available for download')
       }
-      const proxyUrl = `/api/video/download-proxy?url=${encodeURIComponent(videoData.youtubeUrl)}`
+      const proxyUrl = `${API_CONFIG.BACKEND_URL}/api/video/download-proxy?url=${encodeURIComponent(videoData.youtubeUrl)}`
 
       // Fetch the video through our proxy
       const response = await fetch(proxyUrl)

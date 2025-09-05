@@ -6,6 +6,9 @@ import { AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react'
 
 import { validatePassword } from '@/lib/password-validation'
 import { apiService } from '@/lib/api-service'
+import { toast } from 'sonner'
+import LoadingButton from '@/components/ui/loading-button'
+
 
 interface FormData {
   password: string
@@ -52,15 +55,23 @@ function ResetPasswordContent() {
   const validateToken = async (token: string) => {
     try
     {
+      // Check if token has already been used
+      const usedTokens = JSON.parse(localStorage.getItem('usedResetTokens') || '[]')
+      if (usedTokens.includes(token)) {
+        setTokenValid(false)
+        return
+      }
+
       // Use apiService to validate reset token
       const response = await apiService.validateResetToken(token)
-      setTokenValid(response.success && response.data?.isValid ? true : false)
+      setTokenValid(response.success)
     } catch (error)
     {
-      console.error('Token validation error:', error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      toast.error(`Token validation error: ${errorMessage}`)
       setTokenValid(false)
     }
-  }
+  } 
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     // Enhanced input sanitization
@@ -131,11 +142,16 @@ function ResetPasswordContent() {
 
     try
     {
-      // Use apiService to reset password
-      const response = await apiService.resetPassword(token, formData.password)
+      // Use apiService to reset password with global loading
+      const response = await apiService.resetPasswordWithGlobalLoading(token, formData.password)
 
       if (response.success)
       {
+        // Mark token as used by storing it in localStorage
+        const usedTokens = JSON.parse(localStorage.getItem('usedResetTokens') || '[]')
+        usedTokens.push(token)
+        localStorage.setItem('usedResetTokens', JSON.stringify(usedTokens))
+        
         setShowSuccess(true)
       } else
       {
@@ -146,10 +162,10 @@ function ResetPasswordContent() {
       }
     } catch (error)
     {
-      console.error('Reset password error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Something went wrong. Please try again.'
       setErrors(prev => ({
         ...prev,
-        general: 'Something went wrong. Please try again.'
+        general: errorMessage
       }))
     } finally
     {
@@ -350,30 +366,18 @@ function ResetPasswordContent() {
           })()}
 
           {/* Submit Button */}
-          <button
+          <LoadingButton
             type="submit"
+            loading={isSubmitting}
             disabled={isSubmitting}
-            className={`w-full py-[11.4px] px-6 rounded-full font-semibold text-[20px] border-2 transition-colors duration-300 cursor-pointer flex items-center justify-center gap-2 ${isSubmitting
-              ? 'bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed'
-              : 'bg-[#5046E5] text-white border-[#5046E5] hover:bg-transparent hover:text-[#5046E5]'
-              }`}
-            aria-describedby={isSubmitting ? 'submitting-status' : undefined}
+            loadingText="Resetting Password..."
+            variant="primary"
+            size="lg"
+            fullWidth
+            className="py-[11.4px] px-6 rounded-full text-[20px]"
           >
-            {isSubmitting ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Resetting Password...
-              </>
-            ) : (
-              'Reset Password'
-            )}
-          </button>
-
-          {isSubmitting && (
-            <div id="submitting-status" className="sr-only" aria-live="polite">
-              Resetting your password, please wait...
-            </div>
-          )}
+            Reset Password
+          </LoadingButton>
         </form>
 
         {/* Back to Sign In */}

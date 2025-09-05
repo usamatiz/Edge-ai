@@ -8,6 +8,8 @@ import { useAppDispatch } from '@/store/hooks'
 import { setUser } from '@/store/slices/userSlice'
 import { validateAndHandleToken } from '@/lib/jwt-client'
 import { apiService } from '@/lib/api-service'
+import LoadingButton from './loading-button'
+import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 
 // Google OAuth TypeScript declarations
 declare global {
@@ -57,6 +59,9 @@ const GOOGLE_REDIRECT_URI = typeof window !== 'undefined' ? `${window.location.o
 
 export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgotPassword }: SigninModalProps) {
   const dispatch = useAppDispatch()
+  
+  // Use the custom scroll lock hook
+  useModalScrollLock(isOpen)
 
   const [formData, setFormData] = useState<FormData>({
     email: '',
@@ -231,8 +236,8 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
         }
       }
 
-      // Call the login API using new Express backend
-      const response = await apiService.login({
+      // Call the login API using new Express backend with global loading
+      const response = await apiService.loginWithGlobalLoading({
         email: formData.email,
         password: formData.password,
       })
@@ -312,8 +317,8 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
 
     } catch (error)
     {
-      console.error('Login error:', error)
-      showToastMessage('Something went wrong. Please try again.', 'error')
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      showToastMessage(`${errorMessage}`, 'error')
     } finally
     {
       setIsSubmitting(false)
@@ -333,18 +338,38 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
           client_id: GOOGLE_CLIENT_ID,
           scope: 'openid email profile',
           callback: async (response: { access_token?: string; error?: string }) => {
-            if (response.access_token)
-            {
-              await handleGoogleToken(response.access_token)
-            } else
-            {
-              showToastMessage('Google authentication failed. Please try again.', 'error')
+            try {
+              if (response.access_token)
+              {
+                await handleGoogleToken(response.access_token)
+              } else if (response.error)
+              {
+                showToastMessage(`Google authentication failed: ${response.error}`, 'error')
+              } else
+              {
+                showToastMessage('Google authentication was cancelled', 'error')
+              }
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : String(error)
+              showToastMessage(`Google signin error: ${errorMessage}`, 'error')
+            } finally {
+              // Only reset loading state if handleGoogleToken wasn't called
+              if (!response.access_token) {
+                setIsGoogleLoading(false)
+              }
             }
-            setIsGoogleLoading(false)
           },
         })
 
         client.requestAccessToken()
+        
+        // Set a timeout to reset loading state if callback doesn't fire
+        setTimeout(() => {
+          if (isGoogleLoading) {
+            setIsGoogleLoading(false)
+            showToastMessage('Google authentication timed out. Please try again.', 'error')
+          }
+        }, 30000) // 30 second timeout
       } else
       {
         // Fallback to traditional OAuth flow
@@ -359,8 +384,8 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
       }
     } catch (error)
     {
-      console.error('Google signin error:', error)
-      showToastMessage('Google authentication failed. Please try again.', 'error')
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      showToastMessage(`Google signin error: ${errorMessage}`, 'error')
       setIsGoogleLoading(false)
     }
   }
@@ -439,8 +464,12 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
       }
     } catch (error)
     {
-      console.error('Google token handling error:', error)
-      showToastMessage('Failed to complete Google authentication. Please try again.', 'error')
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      showToastMessage(`Google token handling error: ${errorMessage}`, 'error')
+    } finally
+    {
+      // Always reset loading state
+      setIsGoogleLoading(false)
     }
   }
 
@@ -468,8 +497,8 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
       }
     } catch (error)
     {
-      console.error('Error sending verification email:', error)
-      showToastMessage('Something went wrong. Please try again.', 'error')
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      showToastMessage(`Error sending verification email: ${errorMessage}`, 'error')
     }
   }
 
@@ -538,10 +567,6 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
   useEffect(() => {
     if (isOpen)
     {
-      // Prevent body scroll when modal is open
-      const originalStyle = window.getComputedStyle(document.body).overflow
-      document.body.style.overflow = 'hidden'
-
       // Focus first input when modal opens
       setTimeout(() => {
         firstInputRef.current?.focus()
@@ -583,8 +608,6 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
       document.addEventListener('keydown', handleKeyDown)
       return () => {
         document.removeEventListener('keydown', handleKeyDown)
-        // Restore body scroll when modal closes
-        document.body.style.overflow = originalStyle
       }
     }
   }, [isOpen, handleClose])
@@ -864,54 +887,49 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
               </div>
 
               {/* Sign In Button */}
-              <button
+              <LoadingButton
                 type="submit"
+                loading={isSubmitting}
                 disabled={isSubmitting}
-                className={`w-full py-[11.4px] px-6 rounded-full font-semibold text-[20px] border-2 transition-colors duration-300 cursor-pointer mb-6 flex items-center justify-center gap-2 ${isSubmitting
-                  ? 'bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed'
-                  : 'bg-[#5046E5] text-white border-[#5046E5] hover:bg-transparent hover:text-[#5046E5]'
-                  }`}
-                aria-describedby={isSubmitting ? 'submitting-status' : undefined}
+                loadingText="Signing In..."
+                variant="primary"
+                size="lg"
+                fullWidth
+                className="mb-6 py-[11.4px] px-6 rounded-full text-[20px]"
               >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Signing In...
-                  </>
-                ) : (
-                  'Log in'
-                )}
-              </button>
-
-              {isSubmitting && (
-                <div id="submitting-status" className="sr-only" aria-live="polite">
-                  Signing you in, please wait...
-                </div>
-              )}
+                Log in
+              </LoadingButton>
 
               {/* Google Sign In Button */}
               <button
                 type="button"
                 onClick={handleGoogleSignin}
                 disabled={isGoogleLoading}
-                className={`w-[220px] mx-auto bg-white text-[#344054] py-[9.2px] px-2 rounded-full font-normal text-[16px] border border-[#D0D5DD] transition-colors duration-300 cursor-pointer flex items-center justify-center gap-x-3`}
+                className={`w-[220px] mx-auto bg-white text-[#344054] py-[9.2px] px-2 rounded-full font-normal text-[16px] border border-[#D0D5DD] transition-colors duration-300 cursor-pointer flex items-center justify-center gap-x-3 ${isGoogleLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <>
-                  <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <g clipPath="url(#clip0_7697_226)">
-                      <path d="M24.2663 12.2764C24.2663 11.4607 24.2001 10.6406 24.059 9.83807H12.7402V14.4591H19.222C18.953 15.9494 18.0888 17.2678 16.8233 18.1056V21.1039H20.6903C22.9611 19.0139 24.2663 15.9274 24.2663 12.2764Z" fill="#4285F4" />
-                      <path d="M12.7401 24.0008C15.9766 24.0008 18.7059 22.9382 20.6945 21.1039L16.8276 18.1055C15.7517 18.8375 14.3627 19.252 12.7445 19.252C9.61388 19.252 6.95946 17.1399 6.00705 14.3003H2.0166V17.3912C4.05371 21.4434 8.2029 24.0008 12.7401 24.0008Z" fill="#34A853" />
-                      <path d="M6.00277 14.3003C5.50011 12.8099 5.50011 11.1961 6.00277 9.70575V6.61481H2.01674C0.314734 10.0056 0.314734 14.0004 2.01674 17.3912L6.00277 14.3003Z" fill="#FBBC04" />
-                      <path d="M12.7401 4.74966C14.4509 4.7232 16.1044 5.36697 17.3434 6.54867L20.7695 3.12262C18.6001 1.0855 15.7208 -0.034466 12.7401 0.000808666C8.2029 0.000808666 4.05371 2.55822 2.0166 6.61481L6.00264 9.70575C6.95064 6.86173 9.60947 4.74966 12.7401 4.74966Z" fill="#EA4335" />
-                    </g>
-                    <defs>
-                      <clipPath id="clip0_7697_226">
-                        <rect width="24" height="24" fill="white" transform="translate(0.5)" />
-                      </clipPath>
-                    </defs>
-                  </svg>
-                  Sign in with Google
-                </>
+                {isGoogleLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-gray-300 border-t-[#5046E5] rounded-full animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <g clipPath="url(#clip0_7697_226)">
+                        <path d="M24.2663 12.2764C24.2663 11.4607 24.2001 10.6406 24.059 9.83807H12.7402V14.4591H19.222C18.953 15.9494 18.0888 17.2678 16.8233 18.1056V21.1039H20.6903C22.9611 19.0139 24.2663 15.9274 24.2663 12.2764Z" fill="#4285F4" />
+                        <path d="M12.7401 24.0008C15.9766 24.0008 18.7059 22.9382 20.6945 21.1039L16.8276 18.1055C15.7517 18.8375 14.3627 19.252 12.7445 19.252C9.61388 19.252 6.95946 17.1399 6.00705 14.3003H2.0166V17.3912C4.05371 21.4434 8.2029 24.0008 12.7401 24.0008Z" fill="#34A853" />
+                        <path d="M6.00277 14.3003C5.50011 12.8099 5.50011 11.1961 6.00277 9.70575V6.61481H2.01674C0.314734 10.0056 0.314734 14.0004 2.01674 17.3912L6.00277 14.3003Z" fill="#FBBC04" />
+                        <path d="M12.7401 4.74966C14.4509 4.7232 16.1044 5.36697 17.3434 6.54867L20.7695 3.12262C18.6001 1.0855 15.7208 -0.034466 12.7401 0.000808666C8.2029 0.000808666 4.05371 2.55822 2.0166 6.61481L6.00264 9.70575C6.95064 6.86173 9.60947 4.74966 12.7401 4.74966Z" fill="#EA4335" />
+                      </g>
+                      <defs>
+                        <clipPath id="clip0_7697_226">
+                          <rect width="24" height="24" fill="white" transform="translate(0.5)" />
+                        </clipPath>
+                      </defs>
+                    </svg>
+                    Sign in with Google
+                  </>
+                )}
               </button>
 
               {/* Footer Link */}

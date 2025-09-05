@@ -10,6 +10,8 @@ import SubscriptionManagementModal from './subscription-management-modal';
 import { useAppSelector } from '@/store/hooks';
 import { useNotificationStore } from './global-notification';
 import { apiService, SubscriptionData } from '@/lib/api-service';
+import SignupModal from './signup-modal';
+import EmailVerificationModal from "./email-verification-modal";
 
 
 export interface PricingPlan {
@@ -36,9 +38,9 @@ interface EnterprisePlan {
 
 const PricingSection = () => {
   const [isSigninModalOpen, setIsSigninModalOpen] = useState(false);
-  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isManagementModalOpen, setIsManagementModalOpen] = useState(false);
+  const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
   const [apiPlans, setApiPlans] = useState<PricingPlan[] | null>(null);
   const [currentSubscription, setCurrentSubscription] = useState<SubscriptionData | null>(null);
@@ -47,35 +49,39 @@ const PricingSection = () => {
   const { isAuthenticated, accessToken } = useAppSelector((state) => state.user);
   const { showNotification } = useNotificationStore();
 
+  const [isEmailVerificationModalOpen, setIsEmailVerificationModalOpen] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [isForgotPasswordModalOpen, setisForgotPasswordModalOpen] = useState(false);
+
   // API fetch function
-  const fetchPricingPlans = async () => {
+  const fetchPricingPlans = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try
     {
-      console.log('🚀 Fetching pricing plans from API...');
       const result = await apiService.getPricingPlans();
 
       if (result.success && result.data && result.data.plans)
       {
-        console.log('✅ API Response received:', result.data);
         setApiPlans(result.data.plans);
       } else
       {
-        throw new Error(result.message || 'Failed to fetch pricing plans');
+        const errorMessage = result.message || 'Failed to fetch pricing plans';
+        setError(errorMessage);
+        showNotification(errorMessage, 'error');
       }
 
     } catch (err)
     {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch pricing plans';
-      console.error('❌ Error fetching pricing plans:', errorMessage);
       setError(errorMessage);
+      showNotification(errorMessage, 'error');
     } finally
     {
       setIsLoading(false);
     }
-  };
+  }, [showNotification]);
 
   // Fetch current subscription
   const fetchCurrentSubscription = useCallback(async () => {
@@ -91,25 +97,24 @@ const PricingSection = () => {
       } else
       {
         // Don't show error toast for "no subscription found" as it's normal for new users
-        console.log('No active subscription found');
+        // No action needed - this is expected for new users
       }
     } catch (err)
     {
-      console.error('Error fetching current subscription:', err);
       // Only show toast for actual errors, not "no subscription found"
       if (err instanceof Error && !err.message.includes('No active subscription'))
       {
-        showNotification('Failed to load subscription details', 'error');
+        const errorMessage = err.message || 'Failed to load subscription details';
+        showNotification(errorMessage, 'error');
       }
     }
   }, [isAuthenticated, showNotification]);
 
   // UseEffect to fetch data on component mount
   useEffect(() => {
-    console.log('🔄 Component mounted, fetching pricing plans...');
     fetchPricingPlans();
     fetchCurrentSubscription();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchCurrentSubscription, fetchPricingPlans]);
 
   // Handle plan selection
   const handlePlanSelection = async (plan: PricingPlan) => {
@@ -130,19 +135,12 @@ const PricingSection = () => {
         return;
       }
 
-      console.log(`🚀 Opening upgrade flow for plan: ${plan.id}`);
       setSelectedPlan(plan);
       setIsManagementModalOpen(true);
       showNotification(`Opening upgrade options for ${plan.name}`, 'info');
     } else
     {
       // If no subscription, open payment modal for new subscription
-      console.log(`🚀 Starting payment flow for plan: ${plan.id}`, {
-        planId: plan.id,
-        planName: plan.name,
-        price: plan.price,
-      });
-
       setSelectedPlan(plan);
       setIsPaymentModalOpen(true);
       showNotification(`Opening payment form for ${plan.name}`, 'info');
@@ -163,7 +161,6 @@ const PricingSection = () => {
       return;
     }
 
-    console.log('🏢 Enterprise contact request for user');
     showNotification('Enterprise team will contact you soon!', 'success');
 
     // TODO: Implement enterprise contact form or redirect
@@ -355,6 +352,31 @@ const PricingSection = () => {
     buttonText: 'Get Started'
   };
 
+  const handleSignupClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsSignupModalOpen(true);
+  };
+
+  const handleCloseSignupModal = () => {
+    setIsSignupModalOpen(false);
+  };
+
+  const handleOpenSigninModal = () => {
+    setIsSigninModalOpen(true);
+  };
+
+  const handleCloseSigninModal = () => {
+    setIsSigninModalOpen(false);
+  };
+
+  const handleOpenForgotPasswordModal = () => {
+    setisForgotPasswordModalOpen(true);
+  };
+
+  const handleCloseForgotPasswordModal = () => {
+    setisForgotPasswordModalOpen(false);
+  };
+
   return (
     <section className="w-full py-20 bg-black relative overflow-hidden" style={{ backgroundImage: `url('/images/price-bg.png')`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', backgroundAttachment: 'fixed' }}>
       <div className="max-w-[1260px] mx-auto xl:px-0 px-3 relative z-10">
@@ -522,16 +544,36 @@ const PricingSection = () => {
         </div>
       </div>
 
-      <SigninModal
-        isOpen={isSigninModalOpen}
-        onClose={() => setIsSigninModalOpen(false)}
-        onOpenForgotPassword={() => setIsForgotPasswordModalOpen(true)}
+
+      <SignupModal
+        isOpen={isSignupModalOpen}
+        onClose={() => setIsSignupModalOpen(false)}
+        onOpenSignin={() => setIsSigninModalOpen(true)}
       />
 
       <ForgotPasswordModal
         isOpen={isForgotPasswordModalOpen}
-        onClose={() => setIsForgotPasswordModalOpen(false)}
+        onClose={() => setisForgotPasswordModalOpen(false)}
         onOpenSignin={() => setIsSigninModalOpen(true)}
+      />
+
+      {/* Signin Modal */}
+      <SigninModal
+        isOpen={isSigninModalOpen}
+        onClose={handleCloseSigninModal}
+        onOpenSignup={() => {
+          setIsSigninModalOpen(false);
+          setIsSignupModalOpen(true);
+        }}
+        onOpenForgotPassword={handleOpenForgotPasswordModal}
+      />
+
+
+      {/* Email Verification Modal */}
+      <EmailVerificationModal
+        isOpen={isEmailVerificationModalOpen}
+        onClose={() => setIsEmailVerificationModalOpen(false)}
+        email={verificationEmail}
       />
 
 
@@ -549,16 +591,6 @@ const PricingSection = () => {
         }
       `}</style>
 
-      {/* Modals */}
-      <SigninModal
-        isOpen={isSigninModalOpen}
-        onClose={() => setIsSigninModalOpen(false)}
-      />
-
-      <ForgotPasswordModal
-        isOpen={isForgotPasswordModalOpen}
-        onClose={() => setIsForgotPasswordModalOpen(false)}
-      />
 
       {selectedPlan && (
         <PaymentModal
@@ -568,8 +600,7 @@ const PricingSection = () => {
             setSelectedPlan(null);
           }}
           plan={selectedPlan}
-          onSuccess={(subscriptionData) => {
-            console.log('Payment successful:', subscriptionData);
+          onSuccess={() => {
             showNotification('Subscription activated successfully!', 'success');
             // Refresh subscription data after successful payment
             fetchCurrentSubscription();
