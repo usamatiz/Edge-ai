@@ -8,6 +8,8 @@ import SubscriptionDetailsSection from '@/components/ui/subscription-details-sec
 import ProtectedRoute from '@/components/features/auth/ProtectedRoute'
 import { CheckCircle, AlertCircle } from 'lucide-react'
 import { apiService } from '@/lib/api-service'
+import StripeProvider from '@/components/providers/StripeProvider'
+import { PaymentMethods } from '@/components/PaymentMethods'
 
 interface ProfileFormData {
   firstName: string
@@ -26,7 +28,7 @@ interface FormErrors {
 }
 
 export default function AccountPage() {
-  const { user: currentUser } = useAppSelector((state) => state.user)
+  const { user: currentUser, accessToken } = useAppSelector((state) => state.user)
   const dispatch = useAppDispatch()
 
   const [profileData, setProfileData] = useState<ProfileFormData>({
@@ -196,6 +198,11 @@ export default function AccountPage() {
 
             {/* Subscription Details Section */}
             <SubscriptionDetailsSection />
+
+
+            <StripeProvider>
+      <PaymentMethods authToken={accessToken || ''} />
+    </StripeProvider>
 
           </div>
 

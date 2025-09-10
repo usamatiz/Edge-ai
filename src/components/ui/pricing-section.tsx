@@ -52,6 +52,39 @@ const PricingSection = () => {
   const [isEmailVerificationModalOpen, setIsEmailVerificationModalOpen] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
   const [isForgotPasswordModalOpen, setisForgotPasswordModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true)
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(null)
+
+
+
+
+  useEffect(() => {
+    const fetchSubscription = async () => {
+        try
+        {
+            setLoading(true)
+            setError(null)
+            const response = await apiService.getCurrentSubscription()
+
+            if (response.success && response.data)
+            {
+                setSubscription(response.data.subscription)
+            } else
+            {
+                setError(response.message || 'Failed to fetch subscription details')
+            }
+        } catch (err)
+        {
+            const errorMessage = err instanceof Error ? err.message : 'Failed to load subscription details'
+            setError(errorMessage)
+        } finally
+        {
+            setLoading(false)
+        }
+    }
+
+    fetchSubscription()
+}, [])
 
   // API fetch function
   const fetchPricingPlans = useCallback(async () => {
@@ -469,6 +502,12 @@ const PricingSection = () => {
                       <div className="flex justify-center">
                         {(() => {
                           const buttonInfo = getPlanButtonInfo(plan);
+                          
+                          // If subscription is cancelled, only show the current plan button
+                          if (subscription?.cancelAtPeriodEnd && !buttonInfo.isCurrent) {
+                            return null;
+                          }
+                          
                           return (
                             <button
                               onClick={() => handlePlanSelection(plan)}

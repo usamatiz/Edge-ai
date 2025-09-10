@@ -1,7 +1,7 @@
 // Backend API Configuration
 export const API_CONFIG = {
   // Express Backend URL
-  BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://192.168.1.96:4000',
+  BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000',
   
   // https://backend-pi-ten-23.vercel.app
   // http://localhost:4000
@@ -46,6 +46,11 @@ export const API_CONFIG = {
     // Payment endpoints
     PAYMENT: {
       PAYMENT_INTENT: '/api/subscription/payment-intent',
+      METHODS: '/api/payment-methods',
+      SETUP_INTENT: '/api/payment-methods/setup-intent',
+      UPDATE: '/api/payment-methods/update',
+      SET_DEFAULT: '/api/payment-methods', // Base path for set-default
+      DELETE: '/api/payment-methods',      // Base path for delete
     },
     
     // Subscription endpoints

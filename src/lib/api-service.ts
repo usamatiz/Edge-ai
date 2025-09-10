@@ -144,6 +144,49 @@ export interface BillingHistoryResponse {
   };
 }
 
+// Payment Methods Types
+export interface PaymentMethod {
+  id: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+  isDefault: boolean;
+  isExpired: boolean;
+}
+
+export interface PaymentMethodsResponse {
+  success: boolean;
+  message: string;
+  data: {
+    paymentMethods: PaymentMethod[];
+  };
+}
+
+export interface SetupIntentResponse {
+  success: boolean;
+  message: string;
+  data: {
+    setupIntent: {
+      id: string;
+      client_secret: string;
+    };
+  };
+}
+
+export interface UpdatePaymentMethodRequest {
+  setupIntentId: string;
+  setAsDefault: boolean;
+}
+
+export interface UpdatePaymentMethodResponse {
+  success: boolean;
+  message: string;
+  data: {
+    paymentMethod: PaymentMethod;
+  };
+}
+
 
 // API Service Class
 class ApiService {
@@ -452,6 +495,50 @@ class ApiService {
     
     return this.request<any>(API_CONFIG.ENDPOINTS.SUBSCRIPTION.CANCEL, {
       method: 'POST',
+    }, true, true);
+  }
+
+  // Payment Methods API
+  async getPaymentMethods(): Promise<ApiResponse<{ paymentMethods: PaymentMethod[] }>> {
+    return this.request<{ paymentMethods: PaymentMethod[] }>(API_CONFIG.ENDPOINTS.PAYMENT.METHODS, {
+      method: 'GET',
+    }, true, false);
+  }
+
+  async createSetupIntent(): Promise<ApiResponse<{ setupIntent: { id: string; client_secret: string } }>> {
+    // Get CSRF token first
+    await this.getCSRFToken();
+    
+    return this.request<{ setupIntent: { id: string; client_secret: string } }>(API_CONFIG.ENDPOINTS.PAYMENT.SETUP_INTENT, {
+      method: 'POST',
+    }, true, true);
+  }
+
+  async updatePaymentMethod(data: UpdatePaymentMethodRequest): Promise<ApiResponse<{ paymentMethod: PaymentMethod }>> {
+    // Get CSRF token first
+    await this.getCSRFToken();
+    
+    return this.request<{ paymentMethod: PaymentMethod }>(API_CONFIG.ENDPOINTS.PAYMENT.UPDATE, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }, true, true);
+  }
+
+  async setDefaultPaymentMethod(cardId: string): Promise<ApiResponse<any>> {
+    // Get CSRF token first
+    await this.getCSRFToken();
+    
+    console.log('Setting default payment method:', cardId);
+    console.log('Endpoint:', `${API_CONFIG.ENDPOINTS.PAYMENT.SET_DEFAULT}/${cardId}/set-default`);
+    
+    return this.request<any>(`${API_CONFIG.ENDPOINTS.PAYMENT.SET_DEFAULT}/${cardId}/set-default`, {
+      method: 'POST',
+    }, true, true);
+  }
+
+  async deletePaymentMethod(cardId: string): Promise<ApiResponse<any>> {
+    return this.request<any>(`${API_CONFIG.ENDPOINTS.PAYMENT.DELETE}/${cardId}`, {
+      method: 'DELETE',
     }, true, true);
   }
 

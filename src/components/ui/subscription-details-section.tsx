@@ -255,12 +255,14 @@ export default function SubscriptionDetailsSection({ className = '' }: Subscript
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 pt-6">
+                {!subscription.cancelAtPeriodEnd && (
                 <button
                     onClick={handleManageSubscription}
                     className="flex-1 bg-[#5046E5] text-white px-8 py-3 rounded-lg font-medium hover:bg-[#4338CA] transition-colors"
                 >
                     Manage Subscription
                 </button>
+                )}
                 {subscription.status === 'active' && (
                     <button
                         onClick={handleViewBillingHistory}
