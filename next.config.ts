@@ -70,6 +70,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'files2.heygen.ai',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   async headers() {

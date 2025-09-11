@@ -39,15 +39,9 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
 
-  // CSRF token management
-  const [csrfToken, setCsrfToken] = useState<string>('')
-
   useEffect(() => {
     if (isOpen)
     {
-      // Generate simple CSRF token
-      const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
-      setCsrfToken(token);
       // Reset form when modal opens
       setFormData({ email: '' })
       setErrors({ email: '' })
@@ -125,12 +119,6 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
     //   return
     // }
 
-    // CSRF token validation
-    if (!csrfToken)
-    {
-      showToastMessage('Security token invalid. Please refresh and try again.', 'error')
-      return
-    }
 
     if (!validateForm())
     {
@@ -339,8 +327,6 @@ export default function ForgotPasswordModal({ isOpen, onClose, onOpenSignin }: F
             )}
 
             <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
-              {/* CSRF Token (hidden) */}
-              <input type="hidden" name="csrf_token" value={csrfToken} readOnly />
 
               {/* Form Fields */}
               <div className="space-y-4">

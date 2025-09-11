@@ -10,6 +10,7 @@ import { validateAndHandleToken } from '@/lib/jwt-client'
 import { apiService } from '@/lib/api-service'
 import LoadingButton from './loading-button'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
+import { useNotificationStore } from './global-notification'
 
 // Google OAuth TypeScript declarations
 declare global {
@@ -59,6 +60,7 @@ const GOOGLE_REDIRECT_URI = typeof window !== 'undefined' ? `${window.location.o
 
 export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgotPassword }: SigninModalProps) {
   const dispatch = useAppDispatch()
+  const { showNotification } = useNotificationStore()
   
   // Use the custom scroll lock hook
   useModalScrollLock(isOpen)
@@ -76,45 +78,19 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
   const [showSuccess, setShowSuccess] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
-
-  // Toast state
-  const [showToast, setShowToast] = useState(false)
-  const [toastMessage, setToastMessage] = useState('')
-  const [toastType, setToastType] = useState<'success' | 'error'>('success')
   const [emailVerificationStatus, setEmailVerificationStatus] = useState<EmailVerificationStatus | null>(null)
   const [showVerificationMessage, setShowVerificationMessage] = useState(false)
+  const [isResendingVerification, setIsResendingVerification] = useState(false)
 
   // Ref to track Google OAuth timeout
   const googleTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Enhanced security features
-  const [csrfToken, setCsrfToken] = useState<string>('')
-
-  useEffect(() => {
-    if (isOpen)
-    {
-      // Generate simple CSRF token
-      const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
-      setCsrfToken(token);
-    }
-  }, [isOpen])
 
   // Refs for focus management
   const modalRef = useRef<HTMLDivElement>(null)
   const firstInputRef = useRef<HTMLInputElement>(null)
   const errorAnnouncementRef = useRef<HTMLDivElement>(null)
 
-  // Show toast function
-  const showToastMessage = (message: string, type: 'success' | 'error' = 'success') => {
-    setToastMessage(message)
-    setToastType(type)
-    setShowToast(true)
-
-    // Auto hide toast after 3 seconds
-    setTimeout(() => {
-      setShowToast(false)
-    }, 3000)
-  }
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     // Simple input sanitization
@@ -187,16 +163,10 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
 
     if (now - parseInt(lastAttempt) < 60000 && attemptCount >= 5)
     {
-      showToastMessage('Too many signin attempts. Please wait 1 minute before trying again.', 'error');
+      showNotification('Too many signin attempts. Please wait 1 minute before trying again.', 'error');
       return;
     }
 
-    // CSRF token validation
-    if (!csrfToken)
-    {
-      showToastMessage('Security token invalid. Please refresh and try again.', 'error');
-      return;
-    }
 
     if (!validateForm())
     {
@@ -205,7 +175,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
       {
         errorAnnouncementRef.current.textContent = 'Form has validation errors. Please check all fields.'
       }
-      showToastMessage('Please fix the validation errors before submitting.', 'error')
+      showNotification('Please fix the validation errors before submitting.', 'error')
       return
     }
 
@@ -250,7 +220,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
         const accessToken = data.data.accessToken;
         if (!validateAndHandleToken(accessToken))
         {
-          showToastMessage('Invalid token received. Please try again.', 'error');
+          showNotification('Invalid token received. Please try again.', 'error');
           return;
         }
 
@@ -281,7 +251,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
         const welcomeMessage = data.data.user
           ? `Login successful! Welcome back, ${data.data.user.firstName} ${data.data.user.lastName}!`
           : 'Login successful! Welcome back to EdgeAi.'
-        showToastMessage(welcomeMessage, 'success')
+        showNotification(welcomeMessage, 'success')
 
         // Save email if "remember me" is checked
         if (rememberMe)
@@ -292,10 +262,8 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
           localStorage.removeItem('signinEmail')
         }
 
-        // Close modal after success message (give user time to see the toast)
-        setTimeout(() => {
-          handleSuccessfulClose()
-        }, 3000)
+        // Close modal immediately after successful login
+        handleSuccessfulClose()
       } else
       {
         // Check if the error is due to email verification
@@ -311,14 +279,14 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
           // Increment rate limiting counter
           const newCount = attemptCount + 1;
           localStorage.setItem('signinAttemptCount', newCount.toString());
-          showToastMessage(data.message || 'Login failed. Please try again.', 'error')
+          showNotification(data.message || 'Login failed. Please try again.', 'error')
         }
       }
 
     } catch (error)
     {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      showToastMessage(`${errorMessage}`, 'error')
+      showNotification(`${errorMessage}`, 'error')
     } finally
     {
       setIsSubmitting(false)
@@ -344,14 +312,14 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
                 await handleGoogleToken(response.access_token)
               } else if (response.error)
               {
-                showToastMessage(`Google authentication failed: ${response.error}`, 'error')
+                showNotification(`Google authentication failed: ${response.error}`, 'error')
               } else
               {
-                showToastMessage('Google authentication was cancelled', 'error')
+                showNotification('Google authentication was cancelled', 'error')
               }
             } catch (error) {
               const errorMessage = error instanceof Error ? error.message : String(error)
-              showToastMessage(`Google signin error: ${errorMessage}`, 'error')
+              showNotification(`Google signin error: ${errorMessage}`, 'error')
             } finally {
               // Only reset loading state if handleGoogleToken wasn't called
               if (!response.access_token) {
@@ -367,7 +335,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
         setTimeout(() => {
           if (isGoogleLoading) {
             setIsGoogleLoading(false)
-            showToastMessage('Google authentication timed out. Please try again.', 'error')
+            showNotification('Google authentication timed out. Please try again.', 'error')
           }
         }, 30000) // 30 second timeout
       } else
@@ -385,7 +353,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
     } catch (error)
     {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      showToastMessage(`Google signin error: ${errorMessage}`, 'error')
+      showNotification(`Google signin error: ${errorMessage}`, 'error')
       setIsGoogleLoading(false)
     }
   }
@@ -441,12 +409,10 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
         const welcomeMessage = data.data.user
           ? `Welcome to EdgeAi, ${data.data.user.firstName} ${data.data.user.lastName}!`
           : 'Welcome to EdgeAi!'
-        showToastMessage(welcomeMessage, 'success')
+        showNotification(welcomeMessage, 'success')
 
-        // Close modal after success message (give user time to see the toast)
-        setTimeout(() => {
-          handleSuccessfulClose()
-        }, 3000)
+        // Close modal immediately after successful login
+        handleSuccessfulClose()
       } else
       {
         // Check if the error is due to email verification
@@ -459,13 +425,13 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
           setShowVerificationMessage(true)
         } else
         {
-          showToastMessage(data.message || 'Google login failed. Please try again.', 'error')
+          showNotification(data.message || 'Google login failed. Please try again.', 'error')
         }
       }
     } catch (error)
     {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      showToastMessage(`Google token handling error: ${errorMessage}`, 'error')
+      showNotification(`Google token handling error: ${errorMessage}`, 'error')
     } finally
     {
       // Always reset loading state
@@ -479,7 +445,9 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
   }
 
   const handleResendVerification = async () => {
-    if (!emailVerificationStatus) return
+    if (!emailVerificationStatus || isResendingVerification) return
+
+    setIsResendingVerification(true)
 
     try
     {
@@ -488,23 +456,27 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
 
       if (data.success)
       {
-        showToastMessage('Verification email sent successfully! Please check your inbox.', 'success')
+        showNotification('Verification email sent successfully! Please check your inbox.', 'success')
         setShowVerificationMessage(false)
         setEmailVerificationStatus(null)
       } else
       {
-        showToastMessage(data.message || 'Failed to send verification email. Please try again.', 'error')
+        showNotification(data.message || 'Failed to send verification email. Please try again.', 'error')
       }
     } catch (error)
     {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      showToastMessage(`Error sending verification email: ${errorMessage}`, 'error')
+      showNotification(`Error sending verification email: ${errorMessage}`, 'error')
+    } finally
+    {
+      setIsResendingVerification(false)
     }
   }
 
   const handleCloseVerificationMessage = () => {
     setShowVerificationMessage(false)
     setEmailVerificationStatus(null)
+    setIsResendingVerification(false)
   }
 
   const handleClose = useCallback(() => {
@@ -529,9 +501,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
     setIsGoogleLoading(false)
     setEmailVerificationStatus(null)
     setShowVerificationMessage(false)
-    setShowToast(false)
-    setToastMessage('')
-    setToastType('success')
+    setIsResendingVerification(false)
     setShowPassword(false)
     onClose()
   }, [onClose])
@@ -558,7 +528,7 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
     setIsGoogleLoading(false)
     setEmailVerificationStatus(null)
     setShowVerificationMessage(false)
-    // Don't clear toast - let it stay visible
+    setIsResendingVerification(false)
     setShowPassword(false)
     onClose()
   }, [onClose])
@@ -616,38 +586,40 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
   useEffect(() => {
     if (isOpen)
     {
-      // Clear form data and error states when modal opens
-      setFormData({
-        email: '',
-        password: ''
-      })
+      // Load saved email when modal opens
+      const savedEmail = localStorage.getItem('signinEmail')
+      if (savedEmail)
+      {
+        setFormData({
+          email: savedEmail,
+          password: ''
+        })
+        setRememberMe(true)
+      } else
+      {
+        // Clear form data and error states when modal opens (only if no saved email)
+        setFormData({
+          email: '',
+          password: ''
+        })
+        setRememberMe(false)
+      }
+      
       setErrors({
         email: '',
         password: ''
       })
-      setShowToast(false)
-      setToastMessage('')
-      setToastType('success')
       setEmailVerificationStatus(null)
       setShowVerificationMessage(false)
+      setIsResendingVerification(false)
       setIsGoogleLoading(false)
       setShowPassword(false)
-      setRememberMe(false)
 
       // Clear any existing timeout
       if (googleTimeoutRef.current)
       {
         clearTimeout(googleTimeoutRef.current)
         googleTimeoutRef.current = null
-      }
-    } else
-    {
-      // Load saved email when modal is closed
-      const savedEmail = localStorage.getItem('signinEmail')
-      if (savedEmail)
-      {
-        setFormData(prev => ({ ...prev, email: savedEmail }))
-        setRememberMe(true)
       }
     }
   }, [isOpen])
@@ -668,25 +640,6 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
 
   return (
     <>
-      {/* Toast Notification */}
-      {showToast && (
-        <div className="fixed top-4 right-4 z-[60] animate-in slide-in-from-right-2">
-          <div className={`px-4 py-3 rounded-lg shadow-lg max-w-sm ${toastType === 'success'
-            ? 'bg-green-500 text-white'
-            : 'bg-red-500 text-white'
-            }`}>
-            <div className="flex items-center gap-2">
-              {toastType === 'success' ? (
-                <CheckCircle className="w-5 h-5" />
-              ) : (
-                <AlertCircle className="w-5 h-5" />
-              )}
-              <p className="text-sm font-medium">{toastMessage}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
         <div
           ref={modalRef}
@@ -761,13 +714,26 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
                     <div className="flex flex-col sm:flex-row gap-2">
                       <button
                         onClick={handleResendVerification}
-                        className="text-orange-600 hover:text-orange-800 text-sm font-medium underline"
+                        disabled={isResendingVerification}
+                        className={`text-sm font-medium underline flex items-center gap-2 ${
+                          isResendingVerification 
+                            ? 'text-orange-400 cursor-not-allowed' 
+                            : 'text-orange-600 hover:text-orange-800'
+                        }`}
                       >
-                        Resend verification email
+                        {isResendingVerification && (
+                          <div className="w-4 h-4 border-2 border-orange-300 border-t-orange-600 rounded-full animate-spin" />
+                        )}
+                        {isResendingVerification ? 'Sending...' : 'Resend verification email'}
                       </button>
                       <button
                         onClick={handleCloseVerificationMessage}
-                        className="text-orange-600 hover:text-orange-800 text-sm font-medium underline"
+                        disabled={isResendingVerification}
+                        className={`text-sm font-medium underline ${
+                          isResendingVerification 
+                            ? 'text-orange-400 cursor-not-allowed' 
+                            : 'text-orange-600 hover:text-orange-800'
+                        }`}
                       >
                         Close
                       </button>
@@ -778,8 +744,6 @@ export default function SigninModal({ isOpen, onClose, onOpenSignup, onOpenForgo
             )}
 
             <form onSubmit={(e) => { e.preventDefault(); handleSignin(); }}>
-              {/* CSRF Token (hidden) */}
-              <input type="hidden" name="csrf_token" value={csrfToken} readOnly />
 
               {/* Form Fields */}
               <div className="space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4">

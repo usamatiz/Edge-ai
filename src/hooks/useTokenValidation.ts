@@ -31,11 +31,10 @@ export const useTokenValidation = () => {
       // You can show a notification to the user here
       // For now, we'll just log it
     }
-  }, [dispatch]);
+  }, [dispatch, showNotification]);
 
   const validateTokenWithServer = useCallback(async () => {
     const token = localStorage.getItem('accessToken');
-    const csrfToken = localStorage.getItem('csrfToken');
     if (!token) {
       return false;
     }
@@ -45,10 +44,18 @@ export const useTokenValidation = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-csrf-token': csrfToken || '',
         },
         body: JSON.stringify({ token }),
       });
+
+      // Handle 401 Unauthorized (user deleted or token invalid)
+      if (response.status === 401) {
+        console.log('Server returned 401 - user deleted or token invalid, logging out user');
+        dispatch(clearUser());
+        handleTokenExpiration();
+        showNotification('Session expired. Please login again.', 'error');
+        return false;
+      }
 
       const data = await response.json();
 
@@ -65,7 +72,7 @@ export const useTokenValidation = () => {
       console.error('Token validation error:', error);
       return false;
     }
-  }, [dispatch]);
+  }, [dispatch, showNotification]);
 
   // Check token expiration on mount and every 5 minutes
   useEffect(() => {

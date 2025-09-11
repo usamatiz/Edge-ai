@@ -10,6 +10,7 @@ import { validateAndHandleToken } from '@/lib/jwt-client'
 import { apiService } from '@/lib/api-service'
 import LoadingButton from './loading-button'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
+import { useNotificationStore } from './global-notification'
 
 // Google OAuth TypeScript declarations
 declare global {
@@ -65,6 +66,7 @@ interface PasswordStrength {
 
 export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrationSuccess }: SignupModalProps) {
   const dispatch = useAppDispatch()
+  const { showNotification } = useNotificationStore()
   
   // Use the custom scroll lock hook
   useModalScrollLock(isOpen)
@@ -92,11 +94,6 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
   const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>({ score: 0, feedback: [] })
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
 
-  // Toast state
-  const [showToast, setShowToast] = useState(false)
-  const [toastMessage, setToastMessage] = useState('')
-  const [toastType, setToastType] = useState<'success' | 'error'>('success')
-
   // Refs for focus management
   const modalRef = useRef<HTMLDivElement>(null)
   const firstInputRef = useRef<HTMLInputElement>(null)
@@ -118,17 +115,6 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
     return value.trim();
   }
 
-  // CSRF token management
-  const [csrfToken, setCsrfToken] = useState<string>('')
-
-  useEffect(() => {
-    if (isOpen)
-    {
-      // Generate simple CSRF token
-      const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
-      setCsrfToken(token);
-    }
-  }, [isOpen])
 
   // Legacy rate limiting check (now using RateLimiter class)
   // const checkRateLimit = (): boolean => {
@@ -146,17 +132,6 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
   //   return true
   // }
 
-  // Show toast function
-  const showToastMessage = (message: string, type: 'success' | 'error' = 'success') => {
-    setToastMessage(message)
-    setToastType(type)
-    setShowToast(true)
-
-    // Auto hide toast after 3 seconds
-    setTimeout(() => {
-      setShowToast(false)
-    }, 3000)
-  }
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     let processedValue = value
@@ -278,16 +253,10 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
 
     if (now - parseInt(lastAttempt) < 60000 && attemptCount >= 5)
     {
-      showToastMessage('Too many signup attempts. Please wait 1 minute before trying again.', 'error');
+      showNotification('Too many signup attempts. Please wait 1 minute before trying again.', 'error');
       return;
     }
 
-    // CSRF token validation
-    if (!csrfToken)
-    {
-      showToastMessage('Security token invalid. Please refresh and try again.', 'error');
-      return;
-    }
 
     if (!validateForm())
     {
@@ -296,7 +265,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
       {
         errorAnnouncementRef.current.textContent = 'Form has validation errors. Please check all fields.'
       }
-      showToastMessage('Please fix the validation errors before submitting.', 'error')
+      showNotification('Please fix the validation errors before submitting.', 'error')
       return
     }
 
@@ -325,15 +294,13 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
         localStorage.setItem('signupAttemptCount', '0');
 
         // Show success message
-        showToastMessage('Account created successfully! Please check your email for verification.', 'success')
+        showNotification('Account created successfully! Please check your email for verification.', 'success')
 
         // Call the success callback with email
         onRegistrationSuccess?.(formData.email)
 
-        // Close the signup modal after showing success message
-        setTimeout(() => {
-          handleSuccessfulClose()
-        }, 3000)
+        // Close the signup modal immediately after successful registration
+        handleSuccessfulClose()
 
       } else
       {
@@ -344,17 +311,17 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
         // Handle specific error cases
         if (data.message.includes('already exists'))
         {
-          showToastMessage('An account with this email already exists. Please sign in instead.', 'error')
+          showNotification('An account with this email already exists. Please sign in instead.', 'error')
         } else
         {
-          showToastMessage(data.message || 'Registration failed. Please try again.', 'error')
+          showNotification(data.message || 'Registration failed. Please try again.', 'error')
         }
       }
 
     } catch (error)
     {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      showToastMessage(`${errorMessage}`, 'error')
+      showNotification(`${errorMessage}`, 'error')
     } finally
     {
       setIsSubmitting(false)
@@ -380,14 +347,14 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
                 await handleGoogleToken(response.access_token)
               } else if (response.error)
               {
-                showToastMessage(`Google authentication failed: ${response.error}`, 'error')
+                showNotification(`Google authentication failed: ${response.error}`, 'error')
               } else
               {
-                showToastMessage('Google authentication was cancelled', 'error')
+                showNotification('Google authentication was cancelled', 'error')
               }
             } catch (error) {
               const errorMessage = error instanceof Error ? error.message : String(error)
-              showToastMessage(`Google signup error: ${errorMessage}`, 'error')
+              showNotification(`Google signup error: ${errorMessage}`, 'error')
             } finally {
               // Only reset loading state if handleGoogleToken wasn't called
               if (!response.access_token) {
@@ -403,7 +370,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
         setTimeout(() => {
           if (isGoogleLoading) {
             setIsGoogleLoading(false)
-            showToastMessage('Google authentication timed out. Please try again.', 'error')
+            showNotification('Google authentication timed out. Please try again.', 'error')
           }
         }, 30000) // 30 second timeout
       } else
@@ -421,7 +388,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
     } catch (error)
     {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      showToastMessage(`Google signup error: ${errorMessage}`, 'error')
+      showNotification(`Google signup error: ${errorMessage}`, 'error')
       setIsGoogleLoading(false)
     }
   }
@@ -459,7 +426,7 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
         const accessToken = data.data.accessToken;
         if (!validateAndHandleToken(accessToken))
         {
-          showToastMessage('Invalid token received. Please try again.', 'error');
+          showNotification('Invalid token received. Please try again.', 'error');
           return;
         }
 
@@ -506,20 +473,18 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
         const welcomeMessage = data.data.isNewUser
           ? `Welcome to EdgeAi, ${data.data.user.firstName}! Your account has been created successfully.`
           : `Welcome back to EdgeAi, ${data.data.user.firstName}!`
-        showToastMessage(welcomeMessage, 'success')
+        showNotification(welcomeMessage, 'success')
 
-        // Close modal after success message (give user time to see the toast)
-        setTimeout(() => {
-          handleSuccessfulClose()
-        }, 3000)
+        // Close modal immediately after successful registration
+        handleSuccessfulClose()
       } else
       {
-        showToastMessage(data.message || 'Google signup failed. Please try again.', 'error')
+        showNotification(data.message || 'Google signup failed. Please try again.', 'error')
       }
     } catch (error)
     {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      showToastMessage(`Google token handling error: ${errorMessage}`, 'error')
+      showNotification(`Google token handling error: ${errorMessage}`, 'error')
     } finally
     {
       // Always reset loading state
@@ -547,9 +512,6 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
     setShowSuccess(false)
     setIsSubmitting(false)
     setPasswordStrength({ score: 0, feedback: [] })
-    setShowToast(false)
-    setToastMessage('')
-    setToastType('success')
     setShowPassword(false)
     setShowConfirmPassword(false)
     onClose()
@@ -575,7 +537,6 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
     setShowSuccess(false)
     setIsSubmitting(false)
     setPasswordStrength({ score: 0, feedback: [] })
-    // Don't clear toast - let it stay visible
     setShowPassword(false)
     setShowConfirmPassword(false)
     onClose()
@@ -651,9 +612,6 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
         password: '',
         confirmPassword: ''
       })
-      setShowToast(false)
-      setToastMessage('')
-      setToastType('success')
       setPasswordStrength({ score: 0, feedback: [] })
       setIsSubmitting(false)
       setShowPassword(false)
@@ -671,11 +629,11 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
         } catch (error)
         {
           const errorMessage = error instanceof Error ? error.message : String(error)
-          showToastMessage(`${errorMessage}`, 'error')
+          showNotification(`${errorMessage}`, 'error')
         }
       }
     }
-  }, [isOpen])
+  }, [isOpen, showNotification])
 
   // Load Google OAuth script
   useEffect(() => {
@@ -693,25 +651,6 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
 
   return (
     <>
-      {/* Toast Notification */}
-      {showToast && (
-        <div className="fixed top-4 right-4 z-[60] animate-in slide-in-from-right-2">
-          <div className={`px-4 py-3 rounded-lg shadow-lg max-w-sm ${toastType === 'success'
-            ? 'bg-green-500 text-white'
-            : 'bg-red-500 text-white'
-            }`}>
-            <div className="flex items-center gap-2">
-              {toastType === 'success' ? (
-                <CheckCircle className="w-5 h-5" />
-              ) : (
-                <AlertCircle className="w-5 h-5" />
-              )}
-              <p className="text-sm font-medium">{toastMessage}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
         <div
           ref={modalRef}
@@ -772,8 +711,6 @@ export default function SignupModal({ isOpen, onClose, onOpenSignin, onRegistrat
             )}
 
             <form onSubmit={(e) => { e.preventDefault(); handleSignup(); }}>
-              {/* CSRF Token (hidden) */}
-              <input type="hidden" name="csrf_token" value={csrfToken} readOnly />
 
               {/* Form Fields - Two Columns */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-4 mb-4">

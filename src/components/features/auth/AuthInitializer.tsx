@@ -79,6 +79,15 @@ export default function AuthInitializer() {
             }))
           } else
           {
+            // Check if it's a 401 error (user deleted or token invalid)
+            if (response.status === 401 || (response.error && response.error.includes('401'))) {
+              console.log('🔐 AuthInitializer: 401 error - user deleted or token invalid, clearing auth')
+              localStorage.removeItem('accessToken')
+              localStorage.removeItem('user')
+              dispatch(setLoading(false))
+              return
+            }
+            
             // Don't remove token immediately - might be a temporary server issue
             // Set a minimal user state to prevent logout
             dispatch(setUser({
@@ -98,6 +107,16 @@ export default function AuthInitializer() {
         } catch (error)
         {
           console.error('Token validation error:', error)
+          
+          // Check if it's a 401 error (user deleted or token invalid)
+          if (error instanceof Error && error.message.includes('401')) {
+            console.log('🔐 AuthInitializer: 401 error in catch - user deleted or token invalid, clearing auth')
+            localStorage.removeItem('accessToken')
+            localStorage.removeItem('user')
+            dispatch(setLoading(false))
+            return
+          }
+          
           // Don't remove token on network errors - might be temporary
           // Set a minimal user state to prevent logout
           dispatch(setUser({

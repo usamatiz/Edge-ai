@@ -3,6 +3,9 @@
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
+import { CheckCircle, XCircle } from 'lucide-react';
 import { AvatarCreationModal } from './avatar-creation';
 // import Image from "next/image";
 
@@ -40,6 +43,32 @@ const steps: Step[] = [
 
 export function ProcessSteps({ className }: ProcessStepsProps) {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
+  const { user } = useSelector((state: RootState) => state.user);
+
+  // Show toast function
+  const showToastMessage = (message: string, type: 'success' | 'error' = 'success') => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+    
+    // Auto-hide toast after 4 seconds
+    setTimeout(() => {
+      setShowToast(false);
+    }, 5000);
+  };
+
+  const handleCustomAvatarClick = () => {
+    if (user?.id) {
+      // User is logged in, open the modal
+      setIsAvatarModalOpen(true);
+    } else {
+      // User is not logged in, show toast message
+      showToastMessage('Please log in to create a custom avatar', 'error');
+    }
+  };
 
   return (
     <section className={cn("w-full py-14 bg-white", className)}>
@@ -140,13 +169,13 @@ export function ProcessSteps({ className }: ProcessStepsProps) {
             Have More Questions? See our FAQ
           </Link> */}
           <button 
-            onClick={() => setIsAvatarModalOpen(true)}
+            onClick={handleCustomAvatarClick}
             className="inline-flex md:w-fit w-full items-center gap-3 bg-transparent border-2 border-[#5046E5] text-[#5046E5] hover:bg-[#5046E5] hover:text-white py-[7.4px] rounded-full text-[20px] font-semibold transition-colors duration-300 group md:max-w-[192px] max-w-full text-center justify-center px-4"
           >
             Custom Avatar
           </button>
           <Link 
-            href="/create-video/new?source=defaultAvatar"
+            href="/create-video/new"
             className="inline-flex md:w-fit w-full items-center gap-3 border-2 border-[#5046E5] text-white hover:text-[#5046E5] hover:bg-transparent bg-[#5046E5] py-[7.4px] rounded-full text-[20px] font-semibold transition-all duration-300 group md:max-w-[186px] max-w-full text-center justify-center px-4"
           >
             Default Avatar
@@ -159,6 +188,25 @@ export function ProcessSteps({ className }: ProcessStepsProps) {
         isOpen={isAvatarModalOpen}
         onClose={() => setIsAvatarModalOpen(false)}
       />
+
+      {/* Toast Message */}
+      {showToast && (
+        <div className="fixed top-4 right-4 z-[60] animate-in slide-in-from-right-2">
+          <div className={`px-4 py-3 rounded-lg shadow-lg max-w-sm ${toastType === 'success'
+            ? 'bg-green-500 text-white'
+            : 'bg-red-500 text-white'
+          }`}>
+            <div className="flex items-center gap-2">
+              {toastType === 'success' ? (
+                <CheckCircle className="w-5 h-5" />
+              ) : (
+                <XCircle className="w-5 h-5" />
+              )}
+              <p className="text-sm font-medium">{toastMessage}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

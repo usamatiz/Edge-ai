@@ -1,10 +1,12 @@
 // Backend API Configuration
 export const API_CONFIG = {
   // Express Backend URL
-  BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000',
+  BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://13.60.180.94',
   
   // https://backend-pi-ten-23.vercel.app
   // http://localhost:4000
+  // http://192.168.1.72:4000
+  // http://192.168.3.30:4000
   
   // API Endpoints
   ENDPOINTS: {
@@ -24,7 +26,6 @@ export const API_CONFIG = {
       VALIDATE_TOKEN: '/api/auth/validate-token',
       CLEAR_EXPIRED_TOKENS: '/api/auth/clear-expired-tokens',
       GOOGLE_LOGIN: '/api/auth/google',
-      CSRF_TOKEN: '/api/auth/csrf-token',
     },
     
     // Video endpoints
@@ -35,8 +36,17 @@ export const API_CONFIG = {
       STATUS: '/api/video/status',
       DELETE: '/api/video/delete',
       DOWNLOAD_PROXY: '/api/video/download-proxy',
-      GENERATE: '/api/auth/create-video/generate-video',
+      GENERATE: '/api/video/generate-video',
+      CREATE_VIDEO: '/api/video/create',
     },
+    
+    // Avatar endpoints
+    AVATAR: {
+      GET_AVATARS: '/api/video/avatars',
+      CREATE_PHOTO_AVATAR: '/api/video/photo-avatar',
+    },
+
+
     
     // Webhook endpoints
     WEBHOOK: {
@@ -67,10 +77,6 @@ export const API_CONFIG = {
     HEALTH: '/health',
   },
   
-  // CSRF Configuration
-  CSRF: {
-    HEADER_NAME: 'x-csrf-token',
-  },
   
   // Authentication Configuration
   AUTH: {
@@ -85,25 +91,17 @@ export const getApiUrl = (endpoint: string): string => {
 };
 
 // Helper function to get auth headers
-export const getAuthHeaders = (includeCSRF: boolean = false): Record<string, string> => {
+export const getAuthHeaders = (): Record<string, string> => {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  
-  // Add CSRF token if requested
-  if (includeCSRF) {
-    const csrfToken = localStorage.getItem('csrfToken');
-    if (csrfToken) {
-      headers[API_CONFIG.CSRF.HEADER_NAME] = csrfToken;
-    }
-  }
   
   return headers;
 };
 
 // Helper function to get authenticated headers
-export const getAuthenticatedHeaders = (includeCSRF: boolean = false): Record<string, string> => {
-  const headers = getAuthHeaders(includeCSRF);
+export const getAuthenticatedHeaders = (): Record<string, string> => {
+  const headers = getAuthHeaders();
   const token = localStorage.getItem(API_CONFIG.AUTH.TOKEN_KEY);
   
   if (token) {

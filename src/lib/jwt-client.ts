@@ -20,7 +20,7 @@ export function decodeToken(token: string): JWTPayload | null {
     }).join(''));
 
     return JSON.parse(jsonPayload);
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -74,6 +74,8 @@ export function handleTokenExpiration(): void {
   // Clear all auth-related data
   localStorage.removeItem('accessToken');
   localStorage.removeItem('user');
+  localStorage.removeItem('tokenExpiry');
+  localStorage.removeItem('signinEmail');
   
   // Redirect to login with expiration message
   const currentPath = window.location.pathname;

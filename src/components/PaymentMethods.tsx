@@ -206,7 +206,7 @@ const PaymentForm: React.FC<{
               />
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3">
               <button
                 type="submit"
                 disabled={!stripe || addingCard}

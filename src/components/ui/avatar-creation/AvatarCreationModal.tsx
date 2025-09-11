@@ -17,9 +17,10 @@ export type AvatarType = 'digital-twin' | 'photo-avatar'
 interface AvatarCreationModalProps {
   isOpen: boolean
   onClose: () => void
+  onShowToast?: (message: string, type: 'success' | 'error') => void
 }
 
-export default function AvatarCreationModal({ isOpen, onClose }: AvatarCreationModalProps) {
+export default function AvatarCreationModal({ isOpen, onClose, onShowToast }: AvatarCreationModalProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [selectedAvatarType, setSelectedAvatarType] = useState<AvatarType | null>(null)
   const [avatarData, setAvatarData] = useState({
@@ -79,6 +80,11 @@ export default function AvatarCreationModal({ isOpen, onClose }: AvatarCreationM
       avatarType: null
     })
     onClose()
+  }
+
+  const handleAvatarCreationSuccess = () => {
+    // Close modal immediately - WebSocket will handle progress notifications
+    handleClose()
   }
 
   // Helper function to check if current step needs narrow width (Step6PhotoInstructions, Step7PhotoUpload, Step8Details, or Step9AvatarReady)
@@ -157,10 +163,10 @@ export default function AvatarCreationModal({ isOpen, onClose }: AvatarCreationM
         } else {
           return (
             <Step8Details 
-              onNext={handleNext}
               onBack={handleBack}
               avatarData={avatarData}
               setAvatarData={setAvatarData}
+              onClose={handleAvatarCreationSuccess}
             />
           )
         }
@@ -169,11 +175,11 @@ export default function AvatarCreationModal({ isOpen, onClose }: AvatarCreationM
         if (selectedAvatarType === 'digital-twin') {
           return (
             <Step8Details 
-              onNext={handleNext}
               onBack={handleBack}
               avatarData={avatarData}
               setAvatarData={setAvatarData}
               onSkipBackToUpload={handleSkipBackToUpload}
+              onClose={handleAvatarCreationSuccess}
             />
           )
         } else {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { ArrowLeft, X } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import Image from 'next/image'
 
 interface AvatarData {
@@ -23,28 +23,25 @@ interface Step7PhotoUploadProps {
 
 export default function Step7PhotoUpload({ onNext, onBack, avatarData, setAvatarData }: Step7PhotoUploadProps) {
   const [dragActive, setDragActive] = useState(false)
-  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([])
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Function to create preview URLs for uploaded files
-  const createPreviewUrls = (files: File[]) => {
-    const urls = files.map(file => URL.createObjectURL(file))
-    setImagePreviewUrls(prev => [...prev, ...urls])
-    return urls
+  // Function to create preview URL for uploaded file
+  const createPreviewUrl = (file: File) => {
+    const url = URL.createObjectURL(file)
+    setImagePreviewUrl(url)
+    return url
   }
-
-  // Cleanup function for preview URLs (currently unused but kept for future use)
-  // const cleanupPreviewUrls = (urlsToCleanup: string[]) => {
-  //   urlsToCleanup.forEach(url => URL.revokeObjectURL(url))
-  // }
 
   // Cleanup effect to prevent memory leaks
   useEffect(() => {
     return () => {
-      // Cleanup all preview URLs when component unmounts
-      imagePreviewUrls.forEach(url => URL.revokeObjectURL(url))
+      // Cleanup preview URL when component unmounts
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl)
+      }
     }
-  }, [imagePreviewUrls])
+  }, [imagePreviewUrl])
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
@@ -66,10 +63,12 @@ export default function Step7PhotoUpload({ onNext, onBack, avatarData, setAvatar
         file.type.startsWith('image/')
       )
       if (newFiles.length > 0) {
-        createPreviewUrls(newFiles)
+        // Only take the first file
+        const file = newFiles[0]
+        createPreviewUrl(file)
         setAvatarData({
           ...avatarData,
-          photoFiles: [...avatarData.photoFiles, ...newFiles]
+          photoFiles: [file] // Replace with single file
         })
       }
     }
@@ -81,26 +80,25 @@ export default function Step7PhotoUpload({ onNext, onBack, avatarData, setAvatar
         file.type.startsWith('image/')
       )
       if (newFiles.length > 0) {
-        createPreviewUrls(newFiles)
+        // Only take the first file
+        const file = newFiles[0]
+        createPreviewUrl(file)
         setAvatarData({
           ...avatarData,
-          photoFiles: [...avatarData.photoFiles, ...newFiles]
+          photoFiles: [file] // Replace with single file
         })
       }
     }
   }
 
-  const removePhoto = (index: number) => {
+  const removePhoto = () => {
     // Clean up the preview URL for the removed image
-    if (imagePreviewUrls[index]) {
-      URL.revokeObjectURL(imagePreviewUrls[index])
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl)
     }
     
-    const newPhotos = avatarData.photoFiles.filter((_, i) => i !== index)
-    const newPreviewUrls = imagePreviewUrls.filter((_, i) => i !== index)
-    
-    setAvatarData({ ...avatarData, photoFiles: newPhotos })
-    setImagePreviewUrls(newPreviewUrls)
+    setAvatarData({ ...avatarData, photoFiles: [] })
+    setImagePreviewUrl('')
   }
 
   const handleUpload = () => {
@@ -114,7 +112,7 @@ export default function Step7PhotoUpload({ onNext, onBack, avatarData, setAvatar
       {/* Header */}
       <div className="text-left">
         <p className="text-[18px] text-[#5F5F5F] font-normal leading-[24px]">
-          Upload photos to create multiple looks for your avatar
+          Upload a photo to create your avatar
         </p>
       </div>
 
@@ -142,7 +140,7 @@ export default function Step7PhotoUpload({ onNext, onBack, avatarData, setAvatar
           Select
         </button>
         <p className="text-[16px] font-normal leading-[24px] text-[#7C6FFF] pt-5">
-          Drag and Drop photos to upload
+          Drag and Drop photo to upload
         </p>
         <p className="text-[14px] text-[#5F5F5F] font-normal leading-[18px] pt-3">
           Upload PNG, JPG, HEIC, or WebP files up to 200MB
@@ -151,47 +149,43 @@ export default function Step7PhotoUpload({ onNext, onBack, avatarData, setAvatar
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          multiple
           onChange={handleFileSelect}
           className="hidden"
         />
       </div>
 
-      {/* Uploaded Photos */}
+      {/* Uploaded Photo */}
       {avatarData.photoFiles.length > 0 && (
         <div className="space-y-4">
-          <div className="flex flex-wrap justify-center gap-4">
-            {avatarData.photoFiles.map((file, index) => (
-              <div key={index} className="relative group max-w-[110px]">
-                <div className="w-full h-[180px] rounded-[12px] overflow-hidden">
-                  {imagePreviewUrls[index] ? (
-                    <Image
-                      src={imagePreviewUrls[index]}
-                      alt={`Preview ${index + 1}`}
-                      width={100}
-                      height={100}
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-[#98A2B3] text-xs">Photo {index + 1}</span>
-                    </div>
-                  )}
-                </div>
-                <button
-                  onClick={() => removePhoto(index)}
-                  className="absolute -top-2 -right-2 w-6 h-6 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                >
-                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M20.0002 3.3335C29.2168 3.3335 36.6668 10.7835 36.6668 20.0002C36.6668 29.2168 29.2168 36.6668 20.0002 36.6668C10.7835 36.6668 3.3335 29.2168 3.3335 20.0002C3.3335 10.7835 10.7835 3.3335 20.0002 3.3335ZM25.9835 11.6668L20.0002 17.6502L14.0168 11.6668L11.6668 14.0168L17.6502 20.0002L11.6668 25.9835L14.0168 28.3335L20.0002 22.3502L25.9835 28.3335L28.3335 25.9835L22.3502 20.0002L28.3335 14.0168L25.9835 11.6668Z" fill="#282828"/>
-                  </svg>
-
-                </button>
-                <p className="text-[10px] text-[#667085] text-center mt-1 truncate">
-                  {file.name}
-                </p>
+          <div className="flex justify-center">
+            <div className="relative group max-w-[200px]">
+              <div className="w-full h-[250px] rounded-[12px] overflow-hidden">
+                {imagePreviewUrl ? (
+                  <Image
+                    src={imagePreviewUrl}
+                    alt="Preview"
+                    width={200}
+                    height={250}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className="text-[#98A2B3] text-xs">Photo Preview</span>
+                  </div>
+                )}
               </div>
-            ))}
+              <button
+                onClick={removePhoto}
+                className="absolute -top-2 -right-2 w-6 h-6 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              >
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20.0002 3.3335C29.2168 3.3335 36.6668 10.7835 36.6668 20.0002C36.6668 29.2168 29.2168 36.6668 20.0002 36.6668C10.7835 36.6668 3.3335 29.2168 3.3335 20.0002C3.3335 10.7835 10.7835 3.3335 20.0002 3.3335ZM25.9835 11.6668L20.0002 17.6502L14.0168 11.6668L11.6668 14.0168L17.6502 20.0002L11.6668 25.9835L14.0168 28.3335L20.0002 22.3502L25.9835 28.3335L28.3335 25.9835L22.3502 20.0002L28.3335 14.0168L25.9835 11.6668Z" fill="#282828"/>
+                </svg>
+              </button>
+              <p className="text-[12px] text-[#667085] text-center mt-2 truncate">
+                {avatarData.photoFiles[0]?.name}
+              </p>
+            </div>
           </div>
         </div>
       )}

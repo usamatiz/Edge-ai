@@ -14,6 +14,7 @@ import Image from 'next/image'
 // ...existing code...
 import { IoMdArrowDropdown } from "react-icons/io";
 import { useSearchParams } from 'next/navigation'
+import { Avatar } from '@/lib/api-service'
 
 
 // Zod validation schema
@@ -101,32 +102,32 @@ const positionOptions = [
 ]
 
 
-const customAvatarOptions = [
-  {
-    id: 'SHF34020',
-    image: '/images/avatars/avatar1.png',
-    alt: 'SHF34020'
-  },
-  {
-    id: 'FRM89034',
-    image: '/images/avatars/avatar2.png',
-    alt: 'FRM89034'
-  }
-];
+// Legacy avatar options kept for fallback compatibility
+// const customAvatarOptions = [
+//   {
+//     id: 'SHF34020',
+//     image: '/images/avatars/avatar1.png',
+//     alt: 'SHF34020'
+//   },
+//   {
+//     id: 'FRM89034',
+//     image: '/images/avatars/avatar2.png',
+//     alt: 'FRM89034'
+//   }
+// ];
 
-
-const extendedAvatarOptions2 = [
-  { id: 'VAL77889', name: 'VAL77889', imageUrl: '/images/avatars/avatar5.png' },
-  { id: 'PIP34567', name: 'PIP34567', imageUrl: '/images/avatars/avatar6.png' },
-  { id: 'PN100234', name: 'PN100234', imageUrl: '/images/avatars/avatar7.png' },
-  { id: 'CON11223', name: 'CON11223', imageUrl: '/images/avatars/avatar8.png' },
-  { id: 'XTR12340', name: 'XTR12340', imageUrl: '/images/avatars/avatar9.png' },
-  { id: 'DRV34567', name: 'DRV34567', imageUrl: '/images/avatars/avatar10.png' },
-  { id: 'BLD67543', name: 'BLD67543', imageUrl: '/images/avatars/avatar11.png' },
-  { id: 'Account', name: 'Account', imageUrl: '/images/avatars/avatar12.png' },
-  { id: 'FRM11223', name: 'FRM11223', imageUrl: '/images/avatars/avatar13.png' },
-  { id: 'SHF56789', name: 'SHF56789', imageUrl: '/images/avatars/avatar15.png' }
-]
+// const extendedAvatarOptions2 = [
+//   { id: 'VAL77889', name: 'VAL77889', imageUrl: '/images/avatars/avatar5.png' },
+//   { id: 'PIP34567', name: 'PIP34567', imageUrl: '/images/avatars/avatar6.png' },
+//   { id: 'PN100234', name: 'PN100234', imageUrl: '/images/avatars/avatar7.png' },
+//   { id: 'CON11223', name: 'CON11223', imageUrl: '/images/avatars/avatar8.png' },
+//   { id: 'XTR12340', name: 'XTR12340', imageUrl: '/images/avatars/avatar9.png' },
+//   { id: 'DRV34567', name: 'DRV34567', imageUrl: '/images/avatars/avatar10.png' },
+//   { id: 'BLD67543', name: 'BLD67543', imageUrl: '/images/avatars/avatar11.png' },
+//   { id: 'Account', name: 'Account', imageUrl: '/images/avatars/avatar12.png' },
+//   { id: 'FRM11223', name: 'FRM11223', imageUrl: '/images/avatars/avatar13.png' },
+//   { id: 'SHF56789', name: 'SHF56789', imageUrl: '/images/avatars/avatar15.png' }
+// ]
 
 
 interface CreateVideoFormProps {
@@ -141,7 +142,7 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
   const [showSuccessToast] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [formDataForModal, setFormDataForModal] = useState<CreateVideoFormData | null>(null)
+  const [formDataForModal] = useState<CreateVideoFormData | null>(null)
   const [webhookResponse, setWebhookResponse] = useState<{
     prompt?: string
     description?: string
@@ -153,6 +154,10 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
     email?: string
   } | null>(null)
   const [isFromDefaultAvatar, setIsFromDefaultAvatar] = useState(false)
+  const [avatars, setAvatars] = useState<{ custom: Avatar[], default: Avatar[] }>({ custom: [], default: [] })
+  const [avatarsLoading, setAvatarsLoading] = useState(false)
+  const [avatarsError, setAvatarsError] = useState<string | null>(null)
+
 
   // Check if user came from Default Avatar button
   useEffect(() => {
@@ -162,6 +167,43 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
       setIsFromDefaultAvatar(true)
     }
   }, [searchParams])
+
+  // Fetch avatars when component mounts or when user authentication status changes
+  useEffect(() => {
+    const fetchAvatars = async () => {
+      try {
+        setAvatarsLoading(true)
+        setAvatarsError(null)
+        const response = await apiService.getAvatars()
+        
+        if (response.success) {
+          // Handle both response structures: direct response or nested under data
+          const avatarData = (response as any).data || response;
+          
+          setAvatars({
+            custom: (avatarData as any).custom || [],
+            default: (avatarData as any).default || []
+          })
+          
+          // Explicitly clear any previous errors
+          setAvatarsError(null)
+        } else {
+          setAvatarsError(response.message || 'Failed to fetch avatars')
+        }
+      } catch (error: any) {
+        // If API endpoint doesn't exist (404), show a more user-friendly message
+        if (error.message?.includes('Not Found') || error.message?.includes('404')) {
+          setAvatarsError('Avatar API not yet implemented. Using fallback options.')
+        } else {
+          setAvatarsError(error.message || 'Failed to load avatars')
+        }
+      } finally {
+        setAvatarsLoading(false)
+      }
+    }
+
+    fetchAvatars()
+  }, [])
 
   // ...existing code...
 
@@ -246,7 +288,6 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
       }, 100)
     } catch (error: any)
     {
-      console.error('Error submitting form:', error)
       dispatch(setVideoError(error.message || 'Failed to create video'))
     } finally
     {
@@ -258,9 +299,6 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
     // For avatar field, ensure mutual exclusivity between custom and default avatars
     if (field === 'avatar')
     {
-      // Define custom avatar IDs
-      const customAvatarIds = ['SHF34020', 'FRM89034']
-
       // Check if the selected value is a custom avatar
       // ...existing code...
 
@@ -301,7 +339,25 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
     // Use extended options for avatar field when coming from Default Avatar
     const displayOptions = field === 'avatar' && isFromDefaultAvatar ? extendedAvatarOptions : options
     const currentValue = watch(field)
-    const selectedOption = displayOptions.find(option => option.value === currentValue)
+    
+    // For avatar field, try to find the selected avatar from API data first
+    let selectedOption;
+    if (field === 'avatar' && currentValue) {
+      const customAvatar = avatars.custom.find(avatar => avatar.avatar_id === currentValue)
+      const defaultAvatar = avatars.default.find(avatar => avatar.avatar_id === currentValue)
+      if (customAvatar) {
+        // Show avatar_id for custom avatars (same as default avatars)
+        selectedOption = { value: customAvatar.avatar_id, label: customAvatar.avatar_id }
+      } else if (defaultAvatar) {
+        selectedOption = { value: defaultAvatar.avatar_id, label: defaultAvatar.avatar_id }
+      } else {
+        // Fallback to static options
+        selectedOption = displayOptions.find(option => option.value === currentValue)
+      }
+    } else {
+      selectedOption = displayOptions.find(option => option.value === currentValue)
+    }
+    
     const isOpen = openDropdown === field
     const hasError = errors[field]
 
@@ -320,7 +376,7 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
               }
             }, 100)
           }}
-          className={`w-full px-4 py-[10.5px] text-[18px] font-normal bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-left transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white flex items-center justify-between cursor-pointer ${hasError ? 'ring-2 ring-red-500' : ''
+          className={`w-full px-4 py-[10.5px] text-[18px] font-normal bg-[#EEEEEE] hover:bg-[#F5F5F5] border-0 rounded-[8px] text-left transition-all duration-300 focus:outline-none focus:ring focus:ring-[#5046E5] focus:bg-white flex items-center justify-between cursor-pointer overflow-hidden ${hasError ? 'ring-2 ring-red-500' : ''
             } ${selectedOption ? 'text-gray-800 bg-[#F5F5F5]' : 'text-[#11101066]'}`}
           aria-describedby={hasError ? `${field}-error` : undefined}
           aria-invalid={hasError ? 'true' : 'false'}
@@ -333,58 +389,119 @@ export default function CreateVideoForm({ className }: CreateVideoFormProps) {
 
         {isOpen && (
           <div>
-            {field === 'avatar' && isFromDefaultAvatar ? (
+            {field === 'avatar' ? (
               <div className="absolute avatar-dropdown-shadow z-50 lg:w-[506px] w-full mt-1 bg-white rounded-[12px] shadow-lg !overflow-hidden">
                 <div className="py-4 px-6 overflow-y-auto max-h-[500px]">
-                  {/* Custom Avatar Section */}
-                  <div className="mb-3">
-                    <h4 className="text-[20px] font-semibold text-[#5F5F5F] mb-3">Custom Avatar</h4>
-                    <div className="grid lg:grid-cols-4 grid-cols-3 gap-3">
-                      {customAvatarOptions.map((avatar) => (
-                        <button
-                          key={avatar.id}
-                          type="button"
-                          onClick={() => handleDropdownSelect(field, avatar.id)}
-                          className={`flex flex-col items-center max-w-[80px] rounded-lg hover:bg-gray-50 transition-colors duration-200 relative`}
-                        >
-                          <Image src={avatar.image} alt={avatar.alt} width={80} height={80} />
-                          <span className="text-base text-[#11101066] font-normal mt-3">{avatar.id}</span>
-                          {currentValue === avatar.id && (
-                            <Check className="w-4 h-4 absolute -right-3 -top-3 text-[#5046E5] mt-1" />
-                          )}
-                        </button>
-                      ))}
+                  {avatarsLoading ? (
+                    <div className="flex justify-center items-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5046E5]"></div>
+                      <span className="ml-2 text-[#5F5F5F]">Loading avatars...</span>
                     </div>
-                  </div>
-
-                  {/* Separator */}
-                  <div className="bg-[#A0A3BD] h-[1px] mb-3"></div>
-
-                  {/* Default Avatar Section */}
-                  <div>
-                    <h4 className="text-[20px] font-semibold text-[#5F5F5F] mb-3">Default Avatar</h4>
-                    <div className="grid lg:grid-cols-4 grid-cols-3 gap-x-2 gap-y-6">
-                      {extendedAvatarOptions2.map((avatar) => (
-                        <button
-                          key={avatar.id}
-                          type="button"
-                          onClick={() => handleDropdownSelect(field, avatar.id)}
-                          className={`flex flex-col items-center max-w-[80px] rounded-lg hover:bg-gray-50 transition-colors duration-200 relative`}
-                        >
-                          <Image src={avatar.imageUrl} alt={avatar.name} width={80} height={80} />
-
-                          <span className="text-base text-[#11101066] font-normal mt-3">{avatar.name}</span>
-                          {currentValue === avatar.id && (
-                            <Check className="w-4 h-4 absolute -right-3 -top-3 text-[#5046E5] mt-1" />
-                          )}
-                        </button>
-                      ))}
+                  ) : avatarsError ? (
+                    <div className="text-center py-8">
+                      <p className="text-red-500 mb-2">Failed to load avatars</p>
+                      <p className="text-sm text-[#5F5F5F]">{avatarsError}</p>
+                      <button 
+                        onClick={() => {
+                          setAvatarsError(null)
+                          // Trigger refetch by calling the useEffect again
+                          window.location.reload()
+                        }}
+                        className="mt-3 px-4 py-2 bg-[#5046E5] text-white rounded-lg hover:bg-[#4338CA] transition-colors"
+                      >
+                        Retry
+                      </button>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      {/* Custom Avatar Section */}
+                      {avatars.custom.length > 0 && (
+                        <div className="mb-3">
+                          <h4 className="text-[20px] font-semibold text-[#5F5F5F] mb-3">Custom Avatar</h4>
+                          <div className="grid lg:grid-cols-5 grid-cols-3 gap-3">
+                            {avatars.custom.map((avatar) => (
+                              <button
+                                key={avatar._id}
+                                type="button"
+                                onClick={() => handleDropdownSelect(field, avatar.avatar_id)}
+                                className={`flex flex-col items-center max-w-[80px] rounded-lg hover:bg-gray-50 transition-colors duration-200 relative`}
+                              >
+                                <Image 
+                                  src={avatar.preview_image_url || avatar.imageUrl || '/images/avatars/avatargirl.png'} 
+                                  alt={avatar.avatar_name || avatar.name || 'Avatar'} 
+                                  width={80} 
+                                  height={80}
+                                  className="rounded-lg object-cover w-[80px] h-[80px]"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = '/images/avatars/avatargirl.png';
+                                  }}
+                                />
+                                <span className="text-base text-[#11101066] font-normal mt-3 truncate w-full text-center">{avatar.avatar_id}</span>
+                                {currentValue === avatar.avatar_id && (
+                                  <Check className="w-4 h-4 absolute -right-3 -top-3 text-[#5046E5] mt-1" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Separator - only show if both custom and default avatars exist */}
+                      {avatars.custom.length > 0 && avatars.default.length > 0 && (
+                        <div className="bg-[#A0A3BD] h-[1px] mb-3"></div>
+                      )}
+
+                      {/* Default Avatar Section - show first 25 avatars */}
+                      {avatars.default.length > 0 && (
+                        <div>
+                          <h4 className="text-[20px] font-semibold text-[#5F5F5F] mb-3">Default Avatar</h4>
+                          <div className="grid lg:grid-cols-5 grid-cols-3 gap-x-2 gap-y-6">
+                            {avatars.default.slice(0, 25).map((avatar) => (
+                              <button
+                                key={avatar._id}
+                                type="button"
+                                onClick={() => handleDropdownSelect(field, avatar.avatar_id)}
+                                className={`flex flex-col items-center max-w-[80px] rounded-lg hover:bg-gray-50 transition-colors duration-200 relative`}
+                              >
+                                <Image 
+                                  src={avatar.preview_image_url || avatar.imageUrl || '/images/avatars/avatargirl.png'} 
+                                  alt={avatar.avatar_name || avatar.name || 'Avatar'} 
+                                  width={80} 
+                                  height={80}
+                                  className="rounded-lg object-cover w-[80px] h-[80px]"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = '/images/avatars/avatargirl.png';
+                                  }}
+                                />
+                                <span className="text-base text-[#11101066] font-normal mt-3 truncate w-full text-center">{avatar.avatar_id}</span>
+                                {currentValue === avatar.avatar_id && (
+                                  <Check className="w-4 h-4 absolute -right-3 -top-3 text-[#5046E5] mt-1" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                          {avatars.default.length > 25 && (
+                            <p className="text-sm text-[#5F5F5F] text-center mt-3">
+                              Showing first 25 of {avatars.default.length} default avatars
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* No avatars message */}
+                      {avatars.custom.length === 0 && avatars.default.length === 0 && (
+                        <div className="text-center py-8">
+                          <p className="text-[#5F5F5F]">No avatars available</p>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             ) : (
-              /* Show regular dropdown options for normal users */
+              /* Show regular dropdown options for normal users or fallback */
               <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-[8px] shadow-lg max-h-60 overflow-y-auto">
                 {options.map((option) => (
                   <button

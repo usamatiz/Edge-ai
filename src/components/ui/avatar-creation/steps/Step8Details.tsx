@@ -3,6 +3,10 @@
 import { useState } from 'react'
 import { ArrowLeft, Check, AlertCircle } from 'lucide-react'
 import { IoMdArrowDropdown } from "react-icons/io"
+import { useSelector } from 'react-redux'
+import { RootState } from '@/store'
+import { apiService } from '@/lib/api-service'
+import { usePhotoAvatarNotificationContext } from '@/components/providers/PhotoAvatarNotificationProvider'
 import Checkbox from '../../checkbox'
 
 interface AvatarData {
@@ -16,18 +20,21 @@ interface AvatarData {
 }
 
 interface Step8DetailsProps {
-  onNext: () => void
   onBack: () => void
   avatarData: AvatarData
   setAvatarData: (data: AvatarData) => void
   onSkipBackToUpload?: () => void // Add optional prop to skip back to upload step
+  onClose?: () => void // Add optional prop to close the modal
 }
 
-export default function Step8Details({ onNext, onBack, avatarData, setAvatarData, onSkipBackToUpload }: Step8DetailsProps) {
+export default function Step8Details({ onBack, avatarData, setAvatarData, onSkipBackToUpload, onClose }: Step8DetailsProps) {
+  const { user } = useSelector((state: RootState) => state.user)
+  const { isProcessing, clearNotifications } = usePhotoAvatarNotificationContext()
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
-  const [errors, setErrors] = useState<Partial<Record<keyof AvatarData | 'terms', string>>>({})
+  const [errors, setErrors] = useState<Partial<Record<keyof AvatarData | 'terms' | 'general', string>>>({})
   const [showErrors, setShowErrors] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
 
   const ageOptions = [
     { value: '18-24', label: '18-24' },
@@ -158,21 +165,60 @@ export default function Step8Details({ onNext, onBack, avatarData, setAvatarData
     return Object.keys(newErrors).length === 0
   }
 
-  const handleCreate = () => {
-    console.log('Create button clicked!')
-    console.log('Avatar data:', avatarData)
-    console.log('Agreed to terms:', agreedToTerms)
-    
+  const handleCreate = async () => {
     setShowErrors(true)
     const isValid = validateForm()
-    console.log('Form is valid:', isValid)
-    console.log('Validation errors:', errors)
     
     if (isValid) {
-      console.log('Calling onNext()')
-      onNext()
+      // Check if user is logged in
+      if (!user?.id) {
+        setErrors({ ...errors, general: 'Please log in to create an avatar' })
+        return
+      }
+
+      // Check if photo is uploaded
+      if (!avatarData.photoFiles || avatarData.photoFiles.length === 0) {
+        setErrors({ ...errors, general: 'Please upload a photo first' })
+        return
+      }
+
+      // Check if avatar is already being processed
+      if (isProcessing) {
+        setErrors({ ...errors, general: 'Avatar creation is already in progress. Please wait for it to complete.' })
+        return
+      }
+
+      setIsCreating(true)
+      clearNotifications() // Clear any previous notifications
+
+      try {
+        // Create FormData for API call
+        const formData = new FormData()
+        formData.append('image', avatarData.photoFiles[0]) // First (and only) photo
+        formData.append('name', avatarData.name)
+        formData.append('age_group', avatarData.age)
+        formData.append('gender', avatarData.gender.toLowerCase())
+        formData.append('ethnicity', avatarData.ethnicity.toLowerCase())
+        formData.append('userId', user.id)
+        
+        // Call API
+        const result = await apiService.createPhotoAvatar(formData)
+        
+        if (result.success) {
+          // Close modal immediately - WebSocket will handle progress notifications
+          if (onClose) {
+            onClose()
+          }
+        } else {
+          setErrors({ ...errors, general: result.message || 'Failed to create avatar' })
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to create avatar'
+        setErrors({ ...errors, general: errorMessage })
+      } finally {
+        setIsCreating(false)
+      }
     } else {
-      console.log('Form validation failed, showing errors')
       // Scroll to top to show errors
       const container = document.querySelector('.flex-1.overflow-y-auto')
       if (container) {
@@ -198,6 +244,14 @@ export default function Step8Details({ onNext, onBack, avatarData, setAvatarData
         Now, let&apos;s add some details to bring your avatar to life.
         </p>
       </div>
+
+      {/* General Error Message */}
+      {showErrors && errors.general && (
+        <div className="px-2 mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+          <p className="text-red-700 text-sm">{errors.general}</p>
+        </div>
+      )}
 
       {/* Form Fields */}
       <div className="space-y-4 px-2">
@@ -284,9 +338,22 @@ export default function Step8Details({ onNext, onBack, avatarData, setAvatarData
         </button>
         <button
           onClick={handleCreate}
-          className={`px-8 py-[11.3px] font-semibold text-[20px] rounded-full transition-colors duration-300 cursor-pointer w-full bg-[#5046E5] text-white hover:text-[#5046E5] hover:bg-transparent border-2 border-[#5046E5] `}
+          disabled={isCreating || isProcessing}
+          className={`px-8 py-[11.3px] font-semibold text-[20px] rounded-full transition-colors duration-300 cursor-pointer w-full bg-[#5046E5] text-white hover:text-[#5046E5] hover:bg-transparent border-2 border-[#5046E5] ${(isCreating || isProcessing) ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          Create
+          {isCreating ? (
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Creating Avatar...
+            </div>
+          ) : isProcessing ? (
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Processing...
+            </div>
+          ) : (
+            'Create'
+          )}
         </button>
       </div>
 

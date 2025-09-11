@@ -67,14 +67,27 @@ export default function BillingHistoryModal({ isOpen, onClose }: BillingHistoryM
     }
 
     const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        })
+        if (!dateString || typeof dateString !== 'string') {
+            return 'Unknown Date'
+        }
+        
+        try {
+            return new Date(dateString).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            })
+        } catch (error) {
+            console.warn('Date formatting error:', error);
+            return 'Invalid Date'
+        }
     }
 
     const getPlanDisplayName = (planId: string) => {
+        if (!planId || typeof planId !== 'string') {
+            return 'Unknown Plan'
+        }
+        
         switch (planId)
         {
             case 'basic':
@@ -89,6 +102,10 @@ export default function BillingHistoryModal({ isOpen, onClose }: BillingHistoryM
     }
 
     const getTransactionStatusColor = (status: string) => {
+        if (!status || typeof status !== 'string') {
+            return 'text-gray-600 bg-gray-100'
+        }
+        
         switch (status.toLowerCase())
         {
             case 'succeeded':
@@ -151,16 +168,16 @@ export default function BillingHistoryModal({ isOpen, onClose }: BillingHistoryM
                                                 <Receipt className="h-4 w-4 text-white" />
                                             </div>
                                             <div>
-                                                <h4 className="font-medium text-[#282828]">{transaction.description}</h4>
+                                                <h4 className="font-medium text-[#282828]">{transaction.description || 'No Description'}</h4>
                                                 <p className="text-sm text-[#5F5F5F]">
                                                     {getPlanDisplayName(transaction.planId)} • {formatDate(transaction.createdAt)}
                                                 </p>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-lg font-bold text-[#282828]">{transaction.formattedAmount}</p>
+                                            <p className="text-lg font-bold text-[#282828]">{transaction.formattedAmount || 'N/A'}</p>
                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTransactionStatusColor(transaction.status)}`}>
-                                                {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
+                                                {transaction.status ? transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1) : 'Unknown'}
                                             </span>
                                         </div>
                                     </div>
